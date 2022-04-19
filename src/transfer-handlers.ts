@@ -55,7 +55,7 @@ export async function updateOrders(transfer: Transfer, db: FirebaseFirestore.Fir
   const invalidOrdersRef = db.collection('orders').doc('all').collection('invalid');
 
   const ordersForItemQuery = orderItemsRef
-    .where('chainId', '==', transfer.chainId)
+    .where('chainId', '==', transfer.chainId) // TODO still needs to be added to the order item schema
     .where('collection', '==', transfer.address)
     .where('tokenId', '==', transfer.tokenId);
   // TODO filter by validActive
