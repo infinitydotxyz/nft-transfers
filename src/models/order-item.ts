@@ -1,11 +1,10 @@
 import { isOBOrderExpired } from '@infinityxyz/lib/types/core/OBOrder';
 import { firestoreConstants } from '@infinityxyz/lib/utils/constants';
-import { getDb } from 'firestore';
+import { getDb, getUsername } from 'firestore';
 import { FirestoreOrderItem, OrderStatus } from 'types/firestore-order';
 import { Transfer } from 'types/transfer';
 import { OrderType } from './order.interface';
 
-// TODO update username
 export class OrderItem {
   static readonly OWNER_INHERITS_OFFERS = true;
 
@@ -93,11 +92,12 @@ export class OrderItem {
 
     if (this.type === OrderType.Offer && OrderItem.OWNER_INHERITS_OFFERS) {
       this.orderItem.takerAddress = transfer.to;
+      const takerUsername = await getUsername(transfer.to);
+      this.orderItem.takerUsername = takerUsername;
     }
     this.currentOwner = transfer.to;
 
     const orderStatus = await this.getOrderStatus();
-
     this.orderItem.orderStatus = orderStatus;
 
     return this.orderItem;

@@ -19,8 +19,9 @@ export function getDb() {
   return firebaseAdmin.firestore();
 }
 
-export async function getUsername(address: string, db: FirebaseFirestore.Firestore) {
+export async function getUsername(address: string) {
   try {
+    const db = getDb();
     const user = await db.collection(firestoreConstants.USERS_COLL).doc(address).get();
     return user?.data?.()?.username ?? '';
   } catch (err) {
