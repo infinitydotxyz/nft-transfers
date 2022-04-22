@@ -2,11 +2,11 @@
 
 * Webhook url: https://events.hookdeck.com/e/src_zBikGkt4Fdz8p2khcuIvCkFi
 
-### Setup
-
-
 #### Local development
-* Hookdeck
+* Setup Hookdeck
     * Install the [cli](https://hookdeck.com/docs/using-the-cli#installation)
     * Login `hookdeck login`
-    * Start the cli `hookdeck listen [PORT] goldsky`
+    * Start the hookdeck cli to begin receiving events locally `npm run start:hookdeck`
+
+* Start listening for and handling events
+    * `npm run start:dev`
