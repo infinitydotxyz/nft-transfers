@@ -7,7 +7,6 @@ import { Order as IOrder, OrderType } from './order.interface';
 
 export class Order implements IOrder {
   static getRef(orderId: string) {
-    // TODO is this the correct id?
     const db = getDb();
     return db
       .collection(firestoreConstants.ORDERS_COLL)
