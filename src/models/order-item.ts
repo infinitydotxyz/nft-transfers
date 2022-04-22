@@ -20,11 +20,11 @@ export class OrderItem {
     const offers = tokenQuery.where('isSellOrder', '==', false);
     const listings = tokenQuery.where('isSellOrder', '==', true);
 
-    const impactedOffers = offers.where('makerAddress', 'in', [transfer.to, transfer.from]);
+    const impactedListings = listings.where('makerAddress', 'in', [transfer.to, transfer.from]);
 
-    let impactedListings = listings;
+    let impactedOffers = offers;
     if (!OrderItem.OWNER_INHERITS_OFFERS) {
-      impactedListings = listings.where('takerAddress', 'in', [transfer.to, transfer.from]);
+      impactedOffers = offers.where('takerAddress', 'in', [transfer.to, transfer.from]);
     }
 
     return {

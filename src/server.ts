@@ -34,7 +34,7 @@ export function server(transferEmitter: TransferEmitter) {
         from: trimLowerCase(goldskyTransfer.event.data.new.from),
         to: trimLowerCase(goldskyTransfer.event.data.new.to),
         address: trimLowerCase(goldskyTransfer.event.data.new.contract),
-        chainId: '1',
+        chainId: '1', // TODO support other chains
         tokenId: goldskyTransfer.event.data.new.token_id,
         blockNumber: goldskyTransfer.event.data.new.block_number,
         timestamp: goldskyTransfer.event.data.new.timestamp * 1000,
@@ -45,7 +45,7 @@ export function server(transferEmitter: TransferEmitter) {
         from: trimLowerCase(goldskyTransfer.event.data.old.from),
         to: trimLowerCase(goldskyTransfer.event.data.old.to),
         address: trimLowerCase(goldskyTransfer.event.data.old.contract),
-        chainId: '1',
+        chainId: '1', // TODO support other chains
         tokenId: goldskyTransfer.event.data.old.token_id,
         blockNumber: goldskyTransfer.event.data.old.block_number,
         timestamp: goldskyTransfer.event.data.old.timestamp * 1000,
