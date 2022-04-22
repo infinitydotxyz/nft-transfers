@@ -20,6 +20,7 @@ export class Order implements IOrder {
   }
 
   // TODO what should happen if the maker is the same as the taker?
+  // TODO what is profile image? does it need to be updated when user address is updated?
   public async handleTransfer(transfer: Transfer) {
     const orderItems = await this.getOrderItems();
     for (const orderItem of orderItems) {
