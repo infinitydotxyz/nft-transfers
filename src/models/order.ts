@@ -5,8 +5,9 @@ import { Transfer } from 'types/transfer';
 import { OrderItem } from './order-item';
 import { Order as IOrder, OrderType } from './order.interface';
 
-export abstract class Order implements IOrder {
+export class Order implements IOrder {
   static getRef(orderId: string) {
+    // TODO is this the correct id?
     const db = getDb();
     return db
       .collection(firestoreConstants.ORDERS_COLL)

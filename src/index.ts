@@ -7,7 +7,7 @@ import { transferHandler, updateOrdersHandler } from 'transfer-handlers';
 import { TransferEvent, TransferEmitter, Transfer } from 'types/transfer';
 
 function main() {
-  const db = initDb(serviceAccount as ServiceAccount);
+  initDb(serviceAccount as ServiceAccount);
 
   const transferEmitter = new Emittery<TransferEvent>();
 
@@ -21,7 +21,7 @@ function main() {
     throwErrorOnFailure: false
   };
 
-  transferHandler(transferEmitter, [log, updateOrdersHandler], db);
+  transferHandler(transferEmitter, [log, updateOrdersHandler]);
 
   listenForTransfers(transferEmitter);
 }

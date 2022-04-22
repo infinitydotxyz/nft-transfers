@@ -5,6 +5,7 @@ import { FirestoreOrderItem, OrderStatus } from 'types/firestore-order';
 import { Transfer } from 'types/transfer';
 import { OrderType } from './order.interface';
 
+// TODO update username
 export class OrderItem {
   static readonly OWNER_INHERITS_OFFERS = true;
 
