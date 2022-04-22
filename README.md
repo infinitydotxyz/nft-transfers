@@ -1,7 +1,5 @@
 ## nft-transfers
 
-* Webhook url: https://events.hookdeck.com/e/src_zBikGkt4Fdz8p2khcuIvCkFi
-
 #### Local development
 * Setup Hookdeck
     * Install the [cli](https://hookdeck.com/docs/using-the-cli#installation)

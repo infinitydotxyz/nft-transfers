@@ -1,5 +1,5 @@
 import { firestoreConstants } from '@infinityxyz/lib/utils/constants';
-import { getDb } from 'firestore';
+import { getDb, getUsername } from 'firestore';
 import { FirestoreOrder, FirestoreOrderItem, OrderStatus } from 'types/firestore-order';
 import { Transfer } from 'types/transfer';
 import { OrderItem } from './order-item';
@@ -19,6 +19,7 @@ export class Order implements IOrder {
     ) as FirebaseFirestore.CollectionReference<FirestoreOrderItem>;
   }
 
+  // TODO what should happen if the maker is the same as the taker?
   public async handleTransfer(transfer: Transfer) {
     const orderItems = await this.getOrderItems();
     for (const orderItem of orderItems) {
@@ -29,28 +30,64 @@ export class Order implements IOrder {
       }
     }
 
-    const updatedOrderStatus = this.getOrderStatus(orderItems);
+    const { orderStatus: updatedOrderStatus, updateTakerUsername } = this.getOrderStatus(orderItems);
+
+    let requiresUpdate = updateTakerUsername;
+    if (updateTakerUsername) {
+      this.order.takerUsername = await getUsername(this.order.takerAddress);
+    }
+
     if (updatedOrderStatus !== this.order.orderStatus) {
       this.order.orderStatus = updatedOrderStatus;
+      requiresUpdate = true;
+    }
+
+    if (requiresUpdate) {
       await this.save();
     }
     return this.order;
   }
 
-  private getOrderStatus(orderItems: OrderItem[]) {
+  private getOrderStatus(orderItems: OrderItem[]): { orderStatus: OrderStatus; updateTakerUsername: boolean } {
     let status: OrderStatus = OrderStatus.ValidActive;
+    let updateTakerUsername = false;
     const ranking = {
       [OrderStatus.ValidActive]: 0,
       [OrderStatus.ValidInactive]: 1,
       [OrderStatus.Invalid]: 2
     };
-    for (const item of orderItems) {
-      const itemStatus = item.orderStatus;
+    const updateStatus = (itemStatus: OrderStatus) => {
       if (ranking[itemStatus] > ranking[status]) {
         status = itemStatus;
       }
+    };
+
+    for (const item of orderItems) {
+      const itemStatus = item.orderStatus;
+      updateStatus(itemStatus);
     }
-    return status;
+
+    if (this.type === OrderType.Offer) {
+      /**
+       * if the order is an offer, we need to make sure that
+       * the taker is the same for all order items
+       */
+      const takers = new Set<string>();
+      for (const item of orderItems) {
+        takers.add(item.taker);
+      }
+
+      if (takers.size === 1) {
+        const taker = takers.values().next().value as string;
+        if (taker !== this.order.takerAddress) {
+          this.order.takerAddress = taker;
+          updateTakerUsername = true;
+        }
+        updateStatus(OrderStatus.ValidActive);
+      }
+    }
+
+    return { orderStatus: status, updateTakerUsername };
   }
 
   private async save() {
@@ -64,10 +101,6 @@ export class Order implements IOrder {
 
   public get type() {
     return this.order.isSellOrder ? OrderType.Listing : OrderType.Offer;
-  }
-
-  public get orderStatus(): OrderStatus {
-    throw new Error('Not yet implemented');
   }
 
   private get ref(): FirebaseFirestore.DocumentReference<FirestoreOrder> {

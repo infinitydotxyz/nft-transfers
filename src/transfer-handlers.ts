@@ -74,6 +74,8 @@ export async function updateOrders(transfer: Transfer): Promise<void> {
 
   const orders = await Promise.all(orderPromises);
 
+  console.log(`Found: ${orders.length} orders to update`);
+
   for (const order of orders) {
     await order.handleTransfer(standardizedTransfer);
   }

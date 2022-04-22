@@ -18,7 +18,7 @@ export class OrderItem {
       .where('tokenId', '==', transfer.tokenId) as FirebaseFirestore.Query<FirestoreOrderItem>;
 
     const offers = tokenQuery.where('isSellOrder', '==', false);
-    const listings = tokenQuery.where('isSellOrder', '==', false);
+    const listings = tokenQuery.where('isSellOrder', '==', true);
 
     const impactedOffers = offers.where('makerAddress', 'in', [transfer.to, transfer.from]);
 
@@ -51,6 +51,10 @@ export class OrderItem {
 
   get type() {
     return this.orderItem.isSellOrder ? OrderType.Listing : OrderType.Offer;
+  }
+
+  get taker() {
+    return this.orderItem.takerAddress;
   }
 
   transferMatches(transfer: Transfer) {
