@@ -1,3 +1,4 @@
+import { firestoreConstants } from '@infinityxyz/lib/utils/constants';
 import firebaseAdmin, { ServiceAccount } from 'firebase-admin';
 
 /**
@@ -16,4 +17,14 @@ export function initDb(serviceAccount: ServiceAccount) {
  */
 export function getDb() {
   return firebaseAdmin.firestore();
+}
+
+export async function getUsername(address: string, db: FirebaseFirestore.Firestore) {
+  try {
+    const user = await db.collection(firestoreConstants.USERS_COLL).doc(address).get();
+    return user?.data?.()?.username ?? '';
+  } catch (err) {
+    console.error(`Failed to get user doc for ${address}`);
+    return '';
+  }
 }

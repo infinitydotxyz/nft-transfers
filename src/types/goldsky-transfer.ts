@@ -1,30 +1,3 @@
-import Emittery from 'emittery';
-
-export interface Transfer {
-  from: string;
-
-  to: string;
-
-  address: string;
-
-  chainId: string;
-
-  tokenId: number;
-
-  blockNumber: number;
-
-  /**
-   * epoch ms
-   */
-  timestamp: number;
-}
-
-export type TransferEvent = {
-  transfer: Transfer;
-};
-
-export type TransferEmitter = Emittery<TransferEvent>;
-
 export enum WebhookOperation {
   Insert = 'INSERT',
   Update = 'UPDATE',
@@ -72,7 +45,7 @@ export interface GoldskyTransferData {
    * range like: "[14580733,)",
    */
   block_range: string;
-  token_id: number;
+  token_id: string;
 }
 
 export interface NewAndOldData<New, Old> {
@@ -80,4 +53,4 @@ export interface NewAndOldData<New, Old> {
   old: Old;
 }
 
-export type GoldskyTransfer = GoldskyWebhook<NewAndOldData<GoldskyTransferData, unknown>>;
+export type GoldskyTransfer = GoldskyWebhook<NewAndOldData<GoldskyTransferData, GoldskyTransferData>>;
