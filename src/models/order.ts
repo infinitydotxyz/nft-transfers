@@ -1,6 +1,6 @@
+import { FirestoreOrder, FirestoreOrderItem, OBOrderStatus } from '@infinityxyz/lib/types/core/OBOrder';
 import { firestoreConstants } from '@infinityxyz/lib/utils/constants';
-import { getDb, getUsername } from 'firestore';
-import { FirestoreOrder, FirestoreOrderItem, OrderStatus } from 'types/firestore-order';
+import { getDb } from 'firestore';
 import { Transfer } from 'types/transfer';
 import { OrderItem } from './order-item';
 import { OrderType } from './order.types';
@@ -32,13 +32,9 @@ export class Order {
       }
     }
 
-    const { orderStatus: updatedOrderStatus, updateTakerUsername } = this.getOrderStatus(orderItems);
+    const { orderStatus: updatedOrderStatus } = this.getOrderStatus(orderItems);
 
-    let requiresUpdate = updateTakerUsername;
-    if (updateTakerUsername) {
-      this.order.takerUsername = await getUsername(this.order.takerAddress);
-    }
-
+    let requiresUpdate = false;
     if (updatedOrderStatus !== this.order.orderStatus) {
       this.order.orderStatus = updatedOrderStatus;
       requiresUpdate = true;
@@ -50,15 +46,14 @@ export class Order {
     return this.order;
   }
 
-  private getOrderStatus(orderItems: OrderItem[]): { orderStatus: OrderStatus; updateTakerUsername: boolean } {
-    let status: OrderStatus = OrderStatus.ValidActive;
-    let updateTakerUsername = false;
+  private getOrderStatus(orderItems: OrderItem[]): { orderStatus: OBOrderStatus } {
+    let status: OBOrderStatus = OBOrderStatus.ValidActive;
     const ranking = {
-      [OrderStatus.ValidActive]: 0,
-      [OrderStatus.ValidInactive]: 1,
-      [OrderStatus.Invalid]: 2
+      [OBOrderStatus.ValidActive]: 0,
+      [OBOrderStatus.ValidInactive]: 1,
+      [OBOrderStatus.Invalid]: 2
     };
-    const updateStatus = (itemStatus: OrderStatus) => {
+    const updateStatus = (itemStatus: OBOrderStatus) => {
       if (ranking[itemStatus] > ranking[status]) {
         status = itemStatus;
       }
@@ -69,27 +64,7 @@ export class Order {
       updateStatus(itemStatus);
     }
 
-    if (this.type === OrderType.Offer) {
-      /**
-       * if the order is an offer, we need to make sure that
-       * the taker is the same for all order items
-       */
-      const takers = new Set<string>();
-      for (const item of orderItems) {
-        takers.add(item.taker);
-      }
-
-      if (takers.size === 1) {
-        const taker = takers.values().next().value as string;
-        if (taker !== this.order.takerAddress) {
-          this.order.takerAddress = taker;
-          updateTakerUsername = true;
-        }
-        updateStatus(OrderStatus.ValidActive);
-      }
-    }
-
-    return { orderStatus: status, updateTakerUsername };
+    return { orderStatus: status };
   }
 
   private async save(): Promise<FirebaseFirestore.WriteResult> {

@@ -1,9 +1,9 @@
-import { isOBOrderExpired } from '@infinityxyz/lib/types/core/OBOrder';
 import { firestoreConstants } from '@infinityxyz/lib/utils/constants';
+import { isOBOrderExpired } from '@infinityxyz/lib/utils/orders';
 import { getDb, getUsername } from 'firestore';
-import { FirestoreOrderItem, OrderStatus } from 'types/firestore-order';
 import { Transfer } from 'types/transfer';
 import { OrderType } from './order.types';
+import { FirestoreOrderItem, OBOrderStatus } from '@infinityxyz/lib/types/core/OBOrder';
 
 export class OrderItem {
   static readonly OWNER_INHERITS_OFFERS = true;
@@ -14,7 +14,7 @@ export class OrderItem {
     const tokenQuery = db
       .collectionGroup(firestoreConstants.ORDER_ITEMS_SUB_COLL)
       .where('chainId', '==', transfer.chainId)
-      .where('collection', '==', transfer.address)
+      .where('collectionAddress', '==', transfer.address)
       .where('tokenId', '==', transfer.tokenId) as FirebaseFirestore.Query<FirestoreOrderItem>;
 
     const offers = tokenQuery.where('isSellOrder', '==', false);
@@ -45,7 +45,7 @@ export class OrderItem {
     this.currentOwner = this.initialOwner;
   }
 
-  get orderStatus(): OrderStatus {
+  get orderStatus(): OBOrderStatus {
     return this.orderItem.orderStatus;
   }
 
@@ -59,7 +59,7 @@ export class OrderItem {
 
   transferMatches(transfer: Transfer): boolean {
     const correctToken =
-      transfer.address === this.orderItem.collection &&
+      transfer.address === this.orderItem.collectionAddress &&
       transfer.tokenId === this.orderItem.tokenId &&
       transfer.chainId === this.orderItem.chainId;
 
@@ -131,9 +131,9 @@ export class OrderItem {
     return now >= this.orderItem.startTimeMs && !isExpired;
   }
 
-  private async getOrderStatus(): Promise<OrderStatus> {
+  private async getOrderStatus(): Promise<OBOrderStatus> {
     if (!this._isLive) {
-      return OrderStatus.Invalid;
+      return OBOrderStatus.Invalid;
     }
 
     const currentOwnerQuantity = await this.getCurrentOwnerQuantity();
@@ -147,7 +147,7 @@ export class OrderItem {
       isValidActive = makerIsCurrentOwner && currentOwnerOwnsEnoughTokens;
     }
 
-    return isValidActive ? OrderStatus.ValidActive : OrderStatus.ValidInactive;
+    return isValidActive ? OBOrderStatus.ValidActive : OBOrderStatus.ValidInactive;
   }
 
   private async getCurrentOwnerQuantity(): Promise<number> {

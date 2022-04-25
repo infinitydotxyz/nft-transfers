@@ -1,7 +1,7 @@
 import { Transfer, TransferEmitter, TransferEventType } from './types/transfer';
-import { FirestoreOrder } from 'types/firestore-order';
 import { OrderItem } from 'models/order-item';
 import { Order } from 'models/order';
+import { FirestoreOrder } from '@infinityxyz/lib/types/core/OBOrder';
 
 export type TransferHandlerFn = {
   fn: (transfer: Transfer) => Promise<void> | void;

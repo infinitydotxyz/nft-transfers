@@ -1,4 +1,3 @@
-import { FirestoreOrder, FirestoreOrderItem, OrderStatus } from '../types/firestore-order';
 import { initDb } from '../firestore';
 import * as serviceAccount from '../creds/nftc-dev-firebase.json';
 import { ServiceAccount } from 'firebase-admin';
@@ -6,10 +5,11 @@ import { firestoreConstants } from '@infinityxyz/lib/utils/constants';
 import * as Emittery from 'emittery';
 import { Transfer, TransferEvent, TransferEventType } from 'types/transfer';
 import { transferHandler, updateOrdersHandler } from 'transfer-handlers';
+import { FirestoreOrder, FirestoreOrderItem, OBOrderStatus } from '@infinityxyz/lib/types/core/OBOrder';
 
 const db = initDb(serviceAccount as ServiceAccount);
 const id = 'asdfasdf';
-const initialOrderStatus = OrderStatus.ValidActive;
+const initialOrderStatus = OBOrderStatus.ValidActive;
 const chainId = '1';
 const isSellOrder = false;
 const orderItem: FirestoreOrderItem = {
@@ -26,13 +26,13 @@ const orderItem: FirestoreOrderItem = {
   makerAddress: '0x22c3b13EC38cbE06Cf3a4C49c100C65ce830A662'.toLowerCase(),
   takerUsername: '',
   takerAddress: '',
-  collection: '0xce25e60a89f200b1fa40f6c313047ffe386992c3'.toLowerCase(),
+  collectionAddress: '0xce25e60a89f200b1fa40f6c313047ffe386992c3'.toLowerCase(),
   collectionName: 'dotdotdots',
-  profileImage:
+  collectionImage:
     'https://lh3.googleusercontent.com/2Y14SBzLC9owK2YVmTyMkBnF3wKCtXZaFQQcx01Q1bDNR056hW4-z6VzoGgDm0eKrxbSS9EBKpF_acibXRosvvHOkPMaTsqBB4N-nA=w600',
   tokenId: '2381',
   tokenName: 'dotdotdot 2381',
-  imageUrl:
+  tokenImage:
     'https://lh3.googleusercontent.com/2Y14SBzLC9owK2YVmTyMkBnF3wKCtXZaFQQcx01Q1bDNR056hW4-z6VzoGgDm0eKrxbSS9EBKpF_acibXRosvvHOkPMaTsqBB4N-nA=w600',
   numTokens: 1
 };
@@ -50,8 +50,6 @@ async function createOrder() {
     numItems: orderItems.length,
     startPriceEth: first.startPriceEth,
     endPriceEth: first.endPriceEth,
-    startPriceWei: '',
-    endPriceWei: '',
     startTimeMs: first.startTimeMs,
     endTimeMs: first.endTimeMs,
     minBpsToSeller: 0,
@@ -60,8 +58,6 @@ async function createOrder() {
     currencyAddress: '',
     makerUsername: first.makerUsername,
     makerAddress: first.makerAddress,
-    takerUsername: first.takerUsername,
-    takerAddress: first.takerAddress,
     signedOrder: {} as any
   };
 
@@ -94,7 +90,7 @@ async function transfer() {
     type: TransferEventType.Transfer,
     to: orderItem.makerAddress,
     from: '0x0000000000000000000000000000000000000000',
-    address: orderItem.collection,
+    address: orderItem.collectionAddress,
     chainId: orderItem.chainId,
     tokenId: orderItem.tokenId,
     blockNumber: 1000,
