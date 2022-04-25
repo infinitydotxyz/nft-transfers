@@ -6,6 +6,8 @@ export enum TransferEventType {
 }
 
 export interface Transfer {
+  txHash: string;
+
   from: string;
 
   to: string;

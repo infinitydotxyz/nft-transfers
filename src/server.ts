@@ -31,6 +31,7 @@ export function server(transferEmitter: TransferEmitter): void {
     let transfer: Transfer;
     if (transferType === TransferEventType.Transfer) {
       transfer = {
+        txHash: goldskyTransfer.event.data.new.id,
         from: trimLowerCase(goldskyTransfer.event.data.new.from),
         to: trimLowerCase(goldskyTransfer.event.data.new.to),
         address: trimLowerCase(goldskyTransfer.event.data.new.contract),
@@ -42,6 +43,7 @@ export function server(transferEmitter: TransferEmitter): void {
       };
     } else {
       transfer = {
+        txHash: goldskyTransfer.event.data.old.id,
         from: trimLowerCase(goldskyTransfer.event.data.old.from),
         to: trimLowerCase(goldskyTransfer.event.data.old.to),
         address: trimLowerCase(goldskyTransfer.event.data.old.contract),
