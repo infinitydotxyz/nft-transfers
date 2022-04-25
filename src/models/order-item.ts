@@ -3,7 +3,7 @@ import { firestoreConstants } from '@infinityxyz/lib/utils/constants';
 import { getDb, getUsername } from 'firestore';
 import { FirestoreOrderItem, OrderStatus } from 'types/firestore-order';
 import { Transfer } from 'types/transfer';
-import { OrderType } from './order.interface';
+import { OrderType } from './order.types';
 
 export class OrderItem {
   static readonly OWNER_INHERITS_OFFERS = true;
@@ -24,7 +24,7 @@ export class OrderItem {
 
     let impactedOffers = offers;
     if (!OrderItem.OWNER_INHERITS_OFFERS) {
-      impactedOffers = offers.where('takerAddress', 'in', [transfer.to, transfer.from]);
+      impactedOffers = offers.where('takerAddress', '==', transfer.from);
     }
 
     return {
@@ -49,15 +49,15 @@ export class OrderItem {
     return this.orderItem.orderStatus;
   }
 
-  get type() {
+  get type(): OrderType {
     return this.orderItem.isSellOrder ? OrderType.Listing : OrderType.Offer;
   }
 
-  get taker() {
+  get taker(): string {
     return this.orderItem.takerAddress;
   }
 
-  transferMatches(transfer: Transfer) {
+  transferMatches(transfer: Transfer): boolean {
     const correctToken =
       transfer.address === this.orderItem.collection &&
       transfer.tokenId === this.orderItem.tokenId &&
@@ -75,18 +75,17 @@ export class OrderItem {
     }
 
     /**
+     * the order is an offer
+     *
      * if the order is an offer then the order matches if
      * 1. the transfer is to the taker
-     * 2. the transfer is from the taker
-     * 3. the new owner inherits the offers on the token
+     * 2. the new owner inherits the offers on the token
      */
-    if (this.type === OrderType.Offer) {
-      const newOwnerWillBecomeTaker = OrderItem.OWNER_INHERITS_OFFERS;
-      const takerIsGainingTokens = transfer.to === this.orderItem.takerAddress;
-      const takerIsLosingTokens = transfer.from === this.orderItem.takerAddress;
-      const takerShouldBeUpdated = newOwnerWillBecomeTaker || takerIsGainingTokens || takerIsLosingTokens;
-      return correctToken && takerShouldBeUpdated;
-    }
+    const newOwnerWillBecomeTaker = OrderItem.OWNER_INHERITS_OFFERS;
+    const takerIsGainingTokens = transfer.to === this.orderItem.takerAddress;
+    // const takerIsLosingTokens = transfer.from === this.orderItem.takerAddress; // TODO erc1155
+    const takerShouldBeUpdated = newOwnerWillBecomeTaker || takerIsGainingTokens;
+    return correctToken && takerShouldBeUpdated;
   }
 
   async transfer(transfer: Transfer): Promise<FirestoreOrderItem> {
@@ -107,15 +106,15 @@ export class OrderItem {
     return this.orderItem;
   }
 
-  save() {
+  save(): Promise<FirebaseFirestore.WriteResult> {
     return this.ref.update(this.orderItem);
   }
 
-  saveViaBatch(batch: FirebaseFirestore.WriteBatch) {
+  saveViaBatch(batch: FirebaseFirestore.WriteBatch): void {
     batch.update(this.ref, this.orderItem);
   }
 
-  private get _ownerFromOrder() {
+  private get _ownerFromOrder(): string {
     if (this.type === OrderType.Offer) {
       return this.orderItem.takerAddress;
     }
@@ -125,7 +124,7 @@ export class OrderItem {
   /**
    * an order is live if the current time is between the start and end time
    */
-  private get _isLive() {
+  private get _isLive(): boolean {
     const now = Date.now();
     const isExpired = isOBOrderExpired(this.orderItem);
 

@@ -4,7 +4,7 @@ import { trimLowerCase } from '@infinityxyz/lib/utils/formatters';
 import { Transfer, TransferEmitter, TransferEventType } from 'types/transfer';
 import { GoldskyTransfer } from 'types/goldsky-transfer';
 
-export function server(transferEmitter: TransferEmitter) {
+export function server(transferEmitter: TransferEmitter): void {
   const app = express();
   const GOLDSKY_AUTH_HEADER = process.env.GOLDSKY_AUTH_HEADER;
 

@@ -3,15 +3,17 @@ import { getDb, getUsername } from 'firestore';
 import { FirestoreOrder, FirestoreOrderItem, OrderStatus } from 'types/firestore-order';
 import { Transfer } from 'types/transfer';
 import { OrderItem } from './order-item';
-import { Order as IOrder, OrderType } from './order.interface';
+import { OrderType } from './order.types';
 
-export class Order implements IOrder {
-  static getRef(orderId: string) {
+export class Order {
+  static getRef(orderId: string): FirebaseFirestore.DocumentReference<FirestoreOrder> {
     const db = getDb();
     return db
       .collection(firestoreConstants.ORDERS_COLL)
       .doc(orderId) as FirebaseFirestore.DocumentReference<FirestoreOrder>;
   }
+
+  private orderItemsRef: FirebaseFirestore.CollectionReference<FirestoreOrderItem>;
 
   constructor(private order: FirestoreOrder) {
     this.orderItemsRef = this.ref.collection(
@@ -19,9 +21,8 @@ export class Order implements IOrder {
     ) as FirebaseFirestore.CollectionReference<FirestoreOrderItem>;
   }
 
-  // TODO what should happen if the maker is the same as the taker?
   // TODO what is profile image? does it need to be updated when user address is updated?
-  public async handleTransfer(transfer: Transfer) {
+  public async handleTransfer(transfer: Transfer): Promise<FirestoreOrder> {
     const orderItems = await this.getOrderItems();
     for (const orderItem of orderItems) {
       const matchesTransfer = orderItem.transferMatches(transfer);
@@ -91,8 +92,8 @@ export class Order implements IOrder {
     return { orderStatus: status, updateTakerUsername };
   }
 
-  private async save() {
-    await this.ref.update(this.order);
+  private async save(): Promise<FirebaseFirestore.WriteResult> {
+    return await this.ref.update(this.order);
   }
 
   private async getOrderItems(): Promise<OrderItem[]> {
@@ -100,13 +101,11 @@ export class Order implements IOrder {
     return orderItems.docs.map((doc) => new OrderItem(doc.data(), doc.ref));
   }
 
-  public get type() {
+  public get type(): OrderType {
     return this.order.isSellOrder ? OrderType.Listing : OrderType.Offer;
   }
 
   private get ref(): FirebaseFirestore.DocumentReference<FirestoreOrder> {
     return Order.getRef(this.order.id);
   }
-
-  private orderItemsRef: FirebaseFirestore.CollectionReference<FirestoreOrderItem>;
 }

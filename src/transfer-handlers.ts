@@ -15,7 +15,7 @@ export const updateOrdersHandler: TransferHandlerFn = {
   throwErrorOnFailure: true
 };
 
-export function transferHandler(transferEmitter: TransferEmitter, handlerFns: TransferHandlerFn[]) {
+export function transferHandler(transferEmitter: TransferEmitter, handlerFns: TransferHandlerFn[]): void {
   transferEmitter.on('transfer', async (transfer) => {
     try {
       const results = await Promise.allSettled(

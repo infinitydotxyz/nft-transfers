@@ -6,7 +6,7 @@ import * as Emittery from 'emittery';
 import { transferHandler, updateOrdersHandler } from 'transfer-handlers';
 import { TransferEvent, TransferEmitter, Transfer } from 'types/transfer';
 
-function main() {
+function main(): void {
   initDb(serviceAccount as ServiceAccount);
 
   const transferEmitter = new Emittery<TransferEvent>();
