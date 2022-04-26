@@ -9,6 +9,8 @@ import { filterByContractAddress } from 'filter-by-contract-address';
 import { trimLowerCase } from '@infinityxyz/lib/utils/formatters';
 import { HookdeckService } from 'hookdeck/hookdeck.service';
 import { HookdeckConfig } from 'hookdeck/hookdeck.types';
+import { join } from 'path';
+import * as chalk from 'chalk';
 
 const log = {
   fn: (transfer: Transfer) => {
@@ -18,11 +20,11 @@ const log = {
   throwErrorOnFailure: false
 };
 
-function main(): void {
+async function main(): Promise<void> {
   initDb(serviceAccount as ServiceAccount);
 
   const transferEmitter = new Emittery<TransferEvent>();
-  const listenForTransfers: (emitter: TransferEmitter) => void = server;
+  const initTransferListener: (emitter: TransferEmitter, transferEndpoint: URL) => Promise<void> = server;
 
   // TODO add infinity addresses
   const INFINITY_CONTRACT_ADDRESS = '';
@@ -31,27 +33,29 @@ function main(): void {
   const filters = [filterByContractAddress({ blockList: new Set(addressesToExclude) })];
   transferHandler(transferEmitter, [log, updateOrdersHandler], filters);
 
-  listenForTransfers(transferEmitter);
-}
-
-function test(): void {
-  const apiKey = process.env.HOOKDECK_API_KEY;
-  if (!apiKey) {
-    throw new Error('HOOKDECK_API_KEY environment variable is required');
-  }
+  const service = `nft-transfers`;
+  const host = new URL(`https://${service}-dot-${serviceAccount.project_id}.ue.r.appspot.com/`);
+  const transferEndpoint = new URL(join(host.toString(), `/nftTransfer`));
 
   const config: HookdeckConfig = {
-    connectionName: 'infinity-dev',
+    connectionName: `${service}-${serviceAccount.project_id}`,
     sourceName: 'goldsky-transfers',
     destinationName: 'infinity-dev',
-    destinationUrl: '', // TODO
+    destinationUrl: transferEndpoint.toString(),
     apiVersion: '2022-03-01'
   };
 
-  const hookdeck = new HookdeckService(config, apiKey);
+  await initTransferListener(transferEmitter, transferEndpoint);
 
-  hookdeck.connect().then().catch(console.error);
+  const hookdeck = new HookdeckService(config);
+  const { connected, isPaused } = await hookdeck.connect();
+  if (!connected) {
+    throw new Error('Could not connect to hookdeck');
+  }
+  if (isPaused) {
+    console.log(chalk.red('Hookdeck connection is paused'));
+  }
+  console.log(chalk.green(`Connected to hookdeck`));
 }
 
-// main();
-test();
+void main();
