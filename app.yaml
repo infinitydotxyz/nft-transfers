@@ -1,0 +1,7 @@
+service: nft-transfers
+runtime: nodejs16
+env: standard
+automatic_scaling:
+  max_instances: 5
+  target_cpu_utilization: 0.8
+  target_throughput_utilization: 0.8

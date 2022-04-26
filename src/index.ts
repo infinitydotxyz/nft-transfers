@@ -11,6 +11,7 @@ import { HookdeckService } from 'hookdeck/hookdeck.service';
 import { HookdeckConfig } from 'hookdeck/hookdeck.types';
 import { join } from 'path';
 import * as chalk from 'chalk';
+import { getServiceName } from 'utils';
 
 const log = {
   fn: (transfer: Transfer) => {
@@ -33,7 +34,7 @@ async function main(): Promise<void> {
   const filters = [filterByContractAddress({ blockList: new Set(addressesToExclude) })];
   transferHandler(transferEmitter, [log, updateOrdersHandler], filters);
 
-  const service = `nft-transfers`;
+  const service = await getServiceName();
   const host = new URL(`https://${service}-dot-${serviceAccount.project_id}.ue.r.appspot.com/`);
   const transferEndpoint = new URL(join(host.toString(), `/nftTransfer`));
 
