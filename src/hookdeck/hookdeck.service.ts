@@ -76,7 +76,25 @@ export class HookdeckService {
         url: this.config.destinationUrl
       }
     });
-    const isPaused = res.data.paused_at !== null;
+    let isPaused = res.data.paused_at !== null;
+    if (isPaused) {
+      await this.unpauseConnection(res.data.id);
+      isPaused = false;
+    }
+
     return { connected: true, isPaused };
+  }
+
+  private async unpauseConnection(connectionId: string): Promise<void> {
+    try {
+      const res = await this.client.put(`/connections/${connectionId}/unpause`);
+      if (res.data.paused_at === null) {
+        return;
+      }
+      throw new Error(`Failed to unpause connection`);
+    } catch (err) {
+      console.error(err);
+      throw new Error(`Failed to unpause connection`);
+    }
   }
 }
