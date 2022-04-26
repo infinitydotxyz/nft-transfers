@@ -15,11 +15,6 @@ export async function server(transferEmitter: TransferEmitter, transferEndpoint:
       res.send('Hello World!');
     });
 
-    app.get('/_ah/warmup', (req, res) => {
-      console.log(`Warming up...`);
-      res.sendStatus(200);
-    });
-
     app.post(`${transferEndpoint.pathname}`, (req, res) => {
       const authHeader = req.headers['gs-webhook-auth'];
       if (authHeader !== GOLDSKY_AUTH_HEADER) {
