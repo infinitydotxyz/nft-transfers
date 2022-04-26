@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { initDb } from '../firestore';
 import * as serviceAccount from '../creds/nftc-dev-firebase.json';
 import { ServiceAccount } from 'firebase-admin';
@@ -84,9 +85,10 @@ async function transfer() {
     throwErrorOnFailure: false
   };
 
-  transferHandler(transferEmitter, [log, updateOrdersHandler]);
+  transferHandler(transferEmitter, [log, updateOrdersHandler], []);
 
   const transfer: Transfer = {
+    txHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
     type: TransferEventType.Transfer,
     to: orderItem.makerAddress,
     from: '0x0000000000000000000000000000000000000000',
