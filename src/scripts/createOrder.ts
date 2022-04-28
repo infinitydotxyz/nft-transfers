@@ -36,7 +36,10 @@ const orderItem: FirestoreOrderItem = {
   tokenName: 'dotdotdot 2381',
   tokenImage:
     'https://lh3.googleusercontent.com/2Y14SBzLC9owK2YVmTyMkBnF3wKCtXZaFQQcx01Q1bDNR056hW4-z6VzoGgDm0eKrxbSS9EBKpF_acibXRosvvHOkPMaTsqBB4N-nA=w600',
-  numTokens: 1
+  numTokens: 1,
+  collectionSlug: '',
+  hasBlueCheck: false,
+  tokenSlug: ''
 };
 
 async function createOrder() {
