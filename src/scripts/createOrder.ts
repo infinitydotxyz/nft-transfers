@@ -2,7 +2,7 @@
 import { initDb } from '../firestore';
 import * as serviceAccount from '../creds/nftc-dev-firebase.json';
 import { ServiceAccount } from 'firebase-admin';
-import { firestoreConstants } from '@infinityxyz/lib/utils/constants';
+import { ETHEREUM_WETH_ADDRESS, firestoreConstants } from '@infinityxyz/lib/utils/constants';
 import * as Emittery from 'emittery';
 import { Transfer, TransferEvent, TransferEventType } from 'types/transfer';
 import { transferHandler, updateOrdersHandler } from 'transfer-handlers';
@@ -21,6 +21,7 @@ const orderItem: FirestoreOrderItem = {
   numItems: 1,
   startPriceEth: 1,
   endPriceEth: 1,
+  currencyAddress: ETHEREUM_WETH_ADDRESS,
   startTimeMs: Date.now(),
   endTimeMs: 0,
   makerUsername: '_____',
