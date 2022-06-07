@@ -2,6 +2,9 @@ import { Transfer, TransferEmitter, TransferEventType } from './types/transfer';
 import { OrderItem } from 'models/order-item';
 import { Order } from 'models/order';
 import { FirestoreOrder } from '@infinityxyz/lib/types/core/OBOrder';
+import { getDb } from 'firestore';
+import { firestoreConstants } from '@infinityxyz/lib/utils/constants';
+import { getCollectionDocId } from '@infinityxyz/lib/utils/firestore';
 
 export type TransferHandlerFn = {
   fn: (transfer: Transfer) => Promise<void> | void;
@@ -12,6 +15,12 @@ export type TransferHandlerFn = {
 export const updateOrdersHandler: TransferHandlerFn = {
   fn: updateOrders,
   name: 'updateOrders',
+  throwErrorOnFailure: true
+};
+
+export const updateOwnershipHandler: TransferHandlerFn = {
+  fn: updateOwnership,
+  name: 'updateOwnership',
   throwErrorOnFailure: true
 };
 
@@ -90,4 +99,24 @@ export async function updateOrders(transfer: Transfer): Promise<void> {
   for (const order of orders) {
     await order.handleTransfer(standardizedTransfer);
   }
+}
+
+export function updateOwnership(transfer: Transfer): void {
+  const chainId = transfer.chainId;
+  const collectionAddress = transfer.address;
+  const tokenId = transfer.tokenId;
+  const db = getDb();
+  const collectionDocId = getCollectionDocId({ chainId, collectionAddress });
+  db.collection(firestoreConstants.COLLECTIONS_COLL)
+    .doc(collectionDocId)
+    .collection(firestoreConstants.COLLECTION_NFTS_COLL)
+    .doc(tokenId)
+    .set({ owner: transfer.to }, { merge: true })
+    .then(() => {
+      console.log(`Updated ownership of ${chainId}:${collectionAddress}:${tokenId} to ${transfer.to}`);
+    })
+    .catch((err) => {
+      console.error(`Failed to update ownership of ${chainId}:${collectionAddress}:${tokenId} to ${transfer.to}`);
+      console.error(err);
+    });
 }

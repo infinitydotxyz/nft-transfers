@@ -3,7 +3,7 @@ import { initDb } from 'firestore';
 import { server } from 'server';
 import * as serviceAccount from './creds/nftc-dev-firebase.json';
 import * as Emittery from 'emittery';
-import { transferHandler, updateOrdersHandler } from 'transfer-handlers';
+import { transferHandler, updateOrdersHandler, updateOwnershipHandler } from 'transfer-handlers';
 import { TransferEvent, TransferEmitter, Transfer } from 'types/transfer';
 import { filterByContractAddress } from 'filter-by-contract-address';
 import { trimLowerCase } from '@infinityxyz/lib/utils/formatters';
@@ -28,7 +28,7 @@ function main(): void {
   const addressesToExclude = [INFINITY_CONTRACT_ADDRESS].map((address) => trimLowerCase(address));
 
   const filters = [filterByContractAddress({ blockList: new Set(addressesToExclude) })];
-  transferHandler(transferEmitter, [log, updateOrdersHandler], filters);
+  transferHandler(transferEmitter, [log, updateOrdersHandler, updateOwnershipHandler], filters);
 
   listenForTransfers(transferEmitter);
 }
