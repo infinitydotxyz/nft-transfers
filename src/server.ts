@@ -3,6 +3,7 @@ import * as express from 'express';
 import { trimLowerCase } from '@infinityxyz/lib/utils/formatters';
 import { Transfer, TransferEmitter, TransferEventType } from 'types/transfer';
 import { GoldskyTransfer } from 'types/goldsky-transfer';
+import { ChainId } from '@infinityxyz/lib/types/core';
 
 export function server(transferEmitter: TransferEmitter): void {
   const app = express();
@@ -35,7 +36,7 @@ export function server(transferEmitter: TransferEmitter): void {
         from: trimLowerCase(goldskyTransfer.event.data.new.from),
         to: trimLowerCase(goldskyTransfer.event.data.new.to),
         address: trimLowerCase(goldskyTransfer.event.data.new.contract),
-        chainId: '1', // TODO support other chains
+        chainId: ChainId.Mainnet,
         tokenId: goldskyTransfer.event.data.new.token_id,
         blockNumber: goldskyTransfer.event.data.new.block_number,
         timestamp: goldskyTransfer.event.data.new.timestamp * 1000,
@@ -47,7 +48,7 @@ export function server(transferEmitter: TransferEmitter): void {
         from: trimLowerCase(goldskyTransfer.event.data.old.from),
         to: trimLowerCase(goldskyTransfer.event.data.old.to),
         address: trimLowerCase(goldskyTransfer.event.data.old.contract),
-        chainId: '1', // TODO support other chains
+        chainId: ChainId.Mainnet,
         tokenId: goldskyTransfer.event.data.old.token_id,
         blockNumber: goldskyTransfer.event.data.old.block_number,
         timestamp: goldskyTransfer.event.data.old.timestamp * 1000,
