@@ -46,6 +46,7 @@ export interface GoldskyTransferData {
    */
   block_range: string;
   token_id: string;
+  type: string;
 }
 
 export interface NewAndOldData<New, Old> {

@@ -18,6 +18,8 @@ export interface Transfer {
 
   tokenId: string;
 
+  tokenStandard: string;
+
   blockNumber: number;
 
   /**
