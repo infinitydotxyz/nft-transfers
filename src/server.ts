@@ -1,7 +1,7 @@
 import * as chalk from 'chalk';
 import * as express from 'express';
 import { Transfer, TransferEmitter, TransferEventType } from 'types/transfer';
-import { GoldskyTransferV2 } from 'types/goldsky-transfer';
+import { GoldskyTransfer, GoldskyTransferV2 } from 'types/goldsky-transfer';
 import { transferAdapter } from 'transfer-adapter';
 
 export async function server(transferEmitter: TransferEmitter, transferEndpoint: URL): Promise<void> {
@@ -23,7 +23,7 @@ export async function server(transferEmitter: TransferEmitter, transferEndpoint:
         return;
       }
 
-      const goldskyTransfer = req.body as GoldskyTransferV2;
+      const goldskyTransfer = req.body as GoldskyTransferV2 | GoldskyTransfer;
 
       const operation = goldskyTransfer.event.op;
 
