@@ -1,3 +1,4 @@
+import { ChainId } from '@infinityxyz/lib/types/core';
 import Emittery from 'emittery';
 
 export enum TransferEventType {
@@ -14,7 +15,7 @@ export interface Transfer {
 
   address: string;
 
-  chainId: string;
+  chainId: ChainId;
 
   tokenId: string;
 

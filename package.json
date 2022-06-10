@@ -15,7 +15,8 @@
     "script": "cross-env NODE_PATH=./src ts-node-dev -r dotenv/config ./src/scripts/createOrder.ts",
     "deploy:dev": "npm run build && gcloud app deploy --appyaml=./app.yaml --project=nftc-dev && npm run ping",
     "deploy:prod": "npm run build && gcloud app deploy --appyaml=./app.yaml --project=nftc-infinity && npm run ping",
-    "ping": "cross-env NODE_PATH=./src ts-node ./src/ping.ts"
+    "ping": "cross-env NODE_PATH=./src ts-node ./src/ping.ts",
+    "pre:push": "npm run format && npm run lint && npm run build"
   },
   "devDependencies": {
     "@types/express": "^4.17.13",
