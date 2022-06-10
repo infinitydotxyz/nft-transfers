@@ -16,9 +16,8 @@
     "start:dev": "cross-env HOST=localhost cross-env NODE_PATH=./src ts-node-dev -r dotenv/config ./src/index.ts",
     "update:lib": "npm install @infinityxyz/lib@latest",
     "script": "cross-env NODE_PATH=./src ts-node-dev -r dotenv/config ./src/scripts/createOrder.ts",
-    "deploy:dev": "npm run build && gcloud app deploy --appyaml=./app.yaml --project=nftc-dev && npm run ping",
-    "deploy:prod": "npm run build && gcloud app deploy --appyaml=./app.yaml --project=nftc-infinity && npm run ping",
-    "ping": "cross-env NODE_PATH=./src ts-node ./src/ping.ts",
+    "deploy:dev": "npm run build && gcloud app deploy --appyaml=./app.yaml --project=nftc-dev",
+    "deploy:prod": "npm run build && gcloud app deploy --appyaml=./app.yaml --project=nftc-infinity",
     "pre:push": "npm run format && npm run lint && npm run build"
   },
   "devDependencies": {
