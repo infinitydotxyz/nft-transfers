@@ -6,7 +6,7 @@
     "node": "16"
   },
   "scripts": {
-    "build": "npm run clean && tsc",
+    "build": "npm run update:lib && npm run clean && tsc",
     "clean": "rimraf dist",
     "format": "prettier --write \"src/**/*.ts\"",
     "lint": "eslint \"./src/**/*.ts\" --fix",
