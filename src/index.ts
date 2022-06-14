@@ -1,27 +1,27 @@
-import { ServiceAccount } from 'firebase-admin';
 import { initDb } from 'firestore';
 import { server } from 'server';
-import * as serviceAccount from './creds/nftc-dev-firebase.json';
 import * as Emittery from 'emittery';
 import { transferHandler, updateOrdersHandler, updateOwnershipHandler } from 'transfer-handlers';
 import { TransferEvent, TransferEmitter, Transfer } from 'types/transfer';
 import { filterByContractAddress } from 'filter-by-contract-address';
 import { trimLowerCase } from '@infinityxyz/lib/utils/formatters';
+import { HookdeckService } from 'hookdeck/hookdeck.service';
+import * as chalk from 'chalk';
+import { hookdeckConfigs, serviceAccount, transferEndpoint } from 'config';
 
-function main(): void {
-  initDb(serviceAccount as ServiceAccount);
+const log = {
+  fn: (transfer: Transfer) => {
+    console.log(`Received Transfer: ${transfer.type} ${transfer.address} ${transfer.tokenId}`);
+  },
+  name: 'logger',
+  throwErrorOnFailure: false
+};
+
+async function main(): Promise<void> {
+  initDb(serviceAccount);
 
   const transferEmitter = new Emittery<TransferEvent>();
-
-  const listenForTransfers: (emitter: TransferEmitter) => void = server;
-
-  const log = {
-    fn: (transfer: Transfer) => {
-      console.log(`Received Transfer: ${transfer.type} ${transfer.address} ${transfer.tokenId}`);
-    },
-    name: 'logger',
-    throwErrorOnFailure: false
-  };
+  const initTransferListener: (emitter: TransferEmitter, transferEndpoint: URL) => Promise<void> = server;
 
   // TODO add infinity addresses
   const INFINITY_CONTRACT_ADDRESS = '';
@@ -30,7 +30,18 @@ function main(): void {
   const filters = [filterByContractAddress({ blockList: new Set(addressesToExclude) })];
   transferHandler(transferEmitter, [log, updateOrdersHandler, updateOwnershipHandler], filters);
 
-  listenForTransfers(transferEmitter);
+  await initTransferListener(transferEmitter, transferEndpoint);
+
+  for (const hookdeckConfig of hookdeckConfigs) {
+    const hookdeck = new HookdeckService(hookdeckConfig);
+    const { connected, isPaused } = await hookdeck.connect();
+    if (!connected) {
+      throw new Error('Could not connect to hookdeck');
+    }
+    if (isPaused) {
+      console.log(chalk.red('Hookdeck connection is paused'));
+    }
+  }
 }
 
-main();
+void main();
