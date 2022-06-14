@@ -18,7 +18,6 @@ export function initDb(serviceAccount: ServiceAccount): firebaseAdmin.firestore.
  */
 export function getDb(): firebaseAdmin.firestore.Firestore {
   const db = firebaseAdmin.firestore();
-  db.settings({ ignoreUndefinedProperties: true });
   return db;
 }
 

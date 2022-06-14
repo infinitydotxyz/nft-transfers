@@ -155,7 +155,7 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
 
     // also delete collectionDoc if it is empty
     const collectionNfts = await fromUserCollectionDocRef.collection(firestoreConstants.USER_NFTS_COLL).limit(2).get();
-    // 1 because we havent't deleted the tokenDoc yet
+    // 1 because we haven't deleted the tokenDoc yet
     if (collectionNfts.size === 1) {
       batch.delete(fromUserCollectionDocRef);
     }
@@ -193,12 +193,12 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
         chainId: collectionDocData.chainId,
         collectionAddress: collectionDocData.address,
         collectionSlug: collectionDocData.slug,
-        collectionName: collectionDocData.metadata.name,
-        collectionDescription: collectionDocData.metadata.description,
-        collectionSymbol: collectionDocData.metadata.symbol,
-        collectionProfileImage: collectionDocData.metadata.profileImage,
-        collectionBannerImage: collectionDocData.metadata.bannerImage,
-        displayType: collectionDocData.metadata.displayType ?? '',
+        collectionName: collectionDocData.metadata?.name ?? '',
+        collectionDescription: collectionDocData.metadata?.description ?? '',
+        collectionSymbol: collectionDocData.metadata?.symbol ?? '',
+        collectionProfileImage: collectionDocData.metadata?.profileImage ?? '',
+        collectionBannerImage: collectionDocData.metadata?.bannerImage ?? '',
+        displayType: collectionDocData.metadata?.displayType ?? '',
         hasBlueCheck: collectionDocData.hasBlueCheck,
         tokenStandard: collectionDocData.tokenStandard,
         numCollectionNftsOwned
