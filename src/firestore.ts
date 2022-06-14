@@ -8,6 +8,7 @@ export function initDb(serviceAccount: ServiceAccount): firebaseAdmin.firestore.
   firebaseAdmin.initializeApp({
     credential: firebaseAdmin.credential.cert(serviceAccount)
   });
+  firebaseAdmin.firestore().settings({ ignoreUndefinedProperties: true });
 
   return getDb();
 }
@@ -16,7 +17,9 @@ export function initDb(serviceAccount: ServiceAccount): firebaseAdmin.firestore.
  * Returns the firestore instance (singleton).
  */
 export function getDb(): firebaseAdmin.firestore.Firestore {
-  return firebaseAdmin.firestore();
+  const db = firebaseAdmin.firestore();
+  db.settings({ ignoreUndefinedProperties: true });
+  return db;
 }
 
 export async function getUsername(address: string): Promise<string> {

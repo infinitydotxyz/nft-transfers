@@ -1,4 +1,4 @@
-import { ChainId } from '@infinityxyz/lib/types/core';
+import { ChainId, TokenStandard } from '@infinityxyz/lib/types/core';
 import { trimLowerCase } from '@infinityxyz/lib/utils/formatters';
 import { GoldskyTransferData, GoldskyTransferDataV2 } from 'types/goldsky-transfer';
 import { TransferEventType, Transfer } from 'types/transfer';
@@ -18,6 +18,7 @@ export function transferAdapterV2(transfer: GoldskyTransferDataV2, type: Transfe
   if (!chainId) {
     throw new Error(`Invalid chain id ${transfer._gs_chain}`); // TODO support other chains
   }
+
   return {
     txHash: transfer.transaction_hash,
     from: trimLowerCase(transfer.from),
@@ -27,7 +28,8 @@ export function transferAdapterV2(transfer: GoldskyTransferDataV2, type: Transfe
     tokenId: transfer.token_id,
     blockNumber: parseInt(transfer.block_number, 10),
     timestamp: parseInt(transfer.timestamp, 10) * 1000,
-    type
+    type,
+    tokenStandard: transfer.type === '721' ? TokenStandard.ERC721 : TokenStandard.ERC1155
   };
 }
 
@@ -41,6 +43,7 @@ export function transferAdapterV1(transfer: GoldskyTransferData, type: TransferE
     tokenId: transfer.token_id,
     blockNumber: transfer.block_number,
     timestamp: transfer.timestamp * 1000,
-    type
+    type,
+    tokenStandard: transfer.type === '721' ? TokenStandard.ERC721 : TokenStandard.ERC1155
   };
 }
