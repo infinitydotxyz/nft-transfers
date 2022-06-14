@@ -48,9 +48,36 @@ export interface GoldskyTransferData {
   token_id: string;
 }
 
+export interface GoldskyTransferDataV2 {
+  to: string;
+  from: string;
+  _gs_chain: 'mainnet' | string;
+  transaction_hash: string;
+  id: string;
+  // "14923743"
+  block_number: string;
+  /**
+   * contract address
+   */
+  contract_id: string;
+  /**
+   * contract type "721"
+   */
+  type: '721' | string;
+  vid: string;
+  /**
+   * timestamp in epoch seconds as a string
+   */
+  timestamp: string;
+  _gs_gid: string;
+  token_id: string;
+}
+
 export interface NewAndOldData<New, Old> {
   new: New;
   old: Old;
 }
 
 export type GoldskyTransfer = GoldskyWebhook<NewAndOldData<GoldskyTransferData, GoldskyTransferData>>;
+
+export type GoldskyTransferV2 = GoldskyWebhook<NewAndOldData<GoldskyTransferDataV2, GoldskyTransferDataV2>>;

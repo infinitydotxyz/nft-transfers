@@ -7,7 +7,7 @@ import { filterByContractAddress } from 'filter-by-contract-address';
 import { trimLowerCase } from '@infinityxyz/lib/utils/formatters';
 import { HookdeckService } from 'hookdeck/hookdeck.service';
 import * as chalk from 'chalk';
-import { hookdeckConfig, serviceAccount, transferEndpoint } from 'config';
+import { hookdeckConfigs, serviceAccount, transferEndpoint } from 'config';
 
 const log = {
   fn: (transfer: Transfer) => {
@@ -32,13 +32,15 @@ async function main(): Promise<void> {
 
   await initTransferListener(transferEmitter, transferEndpoint);
 
-  const hookdeck = new HookdeckService(hookdeckConfig);
-  const { connected, isPaused } = await hookdeck.connect();
-  if (!connected) {
-    throw new Error('Could not connect to hookdeck');
-  }
-  if (isPaused) {
-    console.log(chalk.red('Hookdeck connection is paused'));
+  for (const hookdeckConfig of hookdeckConfigs) {
+    const hookdeck = new HookdeckService(hookdeckConfig);
+    const { connected, isPaused } = await hookdeck.connect();
+    if (!connected) {
+      throw new Error('Could not connect to hookdeck');
+    }
+    if (isPaused) {
+      console.log(chalk.red('Hookdeck connection is paused'));
+    }
   }
 }
 

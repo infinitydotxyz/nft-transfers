@@ -11,12 +11,22 @@ const serviceName = getServiceName();
 const host = new URL(`https://${serviceName}-dot-${serviceAccountJson.project_id}.ue.r.appspot.com/`);
 const transferEndpoint = new URL(join(host.toString(), `/nftTransfer`));
 
-const hookdeckConfig: HookdeckConfig = {
+// const hookdeckConfigV1: HookdeckConfig = {
+//   connectionName: `${serviceName}-${serviceAccountJson.project_id}`,
+//   sourceName: 'goldsky-transfers',
+//   destinationName: `${serviceName}-${serviceAccountJson.project_id}`,
+//   destinationUrl: transferEndpoint.toString(),
+//   apiVersion: '2022-03-01'
+// };
+
+const hookdeckConfigV2: HookdeckConfig = {
   connectionName: `${serviceName}-${serviceAccountJson.project_id}`,
-  sourceName: 'goldsky-transfers',
+  sourceName: 'goldsky-transfers-v2',
   destinationName: `${serviceName}-${serviceAccountJson.project_id}`,
   destinationUrl: transferEndpoint.toString(),
   apiVersion: '2022-03-01'
 };
 
-export { serviceAccount, serviceName, transferEndpoint, host, hookdeckConfig };
+const hookdeckConfigs = [hookdeckConfigV2];
+
+export { serviceAccount, serviceName, transferEndpoint, host, hookdeckConfigs };
