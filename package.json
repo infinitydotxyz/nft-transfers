@@ -2,18 +2,23 @@
   "name": "nft-transfers",
   "version": "1.0.0",
   "main": "index.js",
+  "engines": {
+    "node": "16"
+  },
   "scripts": {
     "build": "npm run update:lib && npm run clean && tsc",
     "clean": "rimraf dist",
     "format": "prettier --write \"src/**/*.ts\"",
     "lint": "eslint \"./src/**/*.ts\" --fix",
-    "prepare": "husky install",
-    "start": "node -r dotenv/config ./dist/index.js",
-    "start:prod": "npm run build && node -r dotenv/config ./dist/index.js",
-    "start:dev": "cross-env NODE_PATH=./src ts-node-dev -r dotenv/config ./src/index.ts",
+    "prepare": "npx husky install",
+    "start": "npx cross-env NODE_PATH=./dist node -r dotenv/config ./dist/index.js",
+    "start:prod": "cross-env HOST=localhost npm run build && node -r dotenv/config ./dist/index.js",
+    "start:dev": "cross-env HOST=localhost cross-env NODE_PATH=./src ts-node-dev -r dotenv/config ./src/index.ts",
     "update:lib": "npm install @infinityxyz/lib@latest",
-    "start:hookdeck": "hookdeck listen 8080 goldsky",
-    "script": "cross-env NODE_PATH=./src ts-node-dev -r dotenv/config ./src/scripts/createOrder.ts"
+    "script": "cross-env NODE_PATH=./src ts-node-dev -r dotenv/config ./src/scripts/createOrder.ts",
+    "deploy:dev": "npm run build && gcloud app deploy --appyaml=./app.yaml --project=nftc-dev",
+    "deploy:prod": "npm run build && gcloud app deploy --appyaml=./app.yaml --project=nftc-infinity",
+    "pre:push": "npm run format && npm run lint && npm run build"
   },
   "devDependencies": {
     "@types/express": "^4.17.13",
@@ -23,7 +28,6 @@
     "eslint": "^8.13.0",
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-eslint-comments": "^3.2.0",
-    "husky": "^7.0.4",
     "lint-staged": "^12.3.8",
     "prettier": "^2.6.2",
     "rimraf": "^3.0.2",
@@ -35,7 +39,8 @@
     "src/**/*": "prettier --write --ignore-unknown"
   },
   "dependencies": {
-    "@infinityxyz/lib": "^1.89.3",
+    "@infinityxyz/lib": "^1.91.2",
+    "axios": "^0.27.1",
     "chalk": "^4.1.2",
     "dotenv": "^16.0.0",
     "emittery": "^0.10.2",

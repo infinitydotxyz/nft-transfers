@@ -1,10 +1,4 @@
-import {
-  BaseCollection,
-  BaseToken,
-  TokenStandard,
-  UserOwnedCollection,
-  UserOwnedToken
-} from '@infinityxyz/lib/types/core';
+import { BaseCollection, BaseToken, UserOwnedCollection, UserOwnedToken } from '@infinityxyz/lib/types/core';
 import { FirestoreOrder } from '@infinityxyz/lib/types/core/OBOrder';
 import { trimLowerCase } from '@infinityxyz/lib/utils';
 import { firestoreConstants } from '@infinityxyz/lib/utils/constants';
@@ -118,7 +112,6 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
   const collectionDocId = getCollectionDocId({ chainId, collectionAddress });
   const fromAddress = trimLowerCase(transfer.from);
   const toAddress = trimLowerCase(transfer.to);
-  const tokenStandard = transfer.tokenStandard === '721' ? TokenStandard.ERC721 : TokenStandard.ERC1155;
 
   // update the asset under collections/nfts collection
   const tokenDocRef = db
@@ -162,7 +155,7 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
 
     // also delete collectionDoc if it is empty
     const collectionNfts = await fromUserCollectionDocRef.collection(firestoreConstants.USER_NFTS_COLL).limit(2).get();
-    // 1 because we havent't deleted the tokenDoc yet
+    // 1 because we haven't deleted the tokenDoc yet
     if (collectionNfts.size === 1) {
       batch.delete(fromUserCollectionDocRef);
     }
@@ -200,14 +193,14 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
         chainId: collectionDocData.chainId,
         collectionAddress: collectionDocData.address,
         collectionSlug: collectionDocData.slug,
-        collectionName: collectionDocData.metadata.name,
-        collectionDescription: collectionDocData.metadata.description,
-        collectionSymbol: collectionDocData.metadata.symbol,
-        collectionProfileImage: collectionDocData.metadata.profileImage,
-        collectionBannerImage: collectionDocData.metadata.bannerImage,
-        displayType: collectionDocData.metadata.displayType ?? '',
+        collectionName: collectionDocData.metadata?.name ?? '',
+        collectionDescription: collectionDocData.metadata?.description ?? '',
+        collectionSymbol: collectionDocData.metadata?.symbol ?? '',
+        collectionProfileImage: collectionDocData.metadata?.profileImage ?? '',
+        collectionBannerImage: collectionDocData.metadata?.bannerImage ?? '',
+        displayType: collectionDocData.metadata?.displayType ?? '',
         hasBlueCheck: collectionDocData.hasBlueCheck,
-        tokenStandard,
+        tokenStandard: collectionDocData.tokenStandard,
         numCollectionNftsOwned
       };
       batch.set(toUserCollectionDocRef, userOwnedCollectionData, { merge: true });
