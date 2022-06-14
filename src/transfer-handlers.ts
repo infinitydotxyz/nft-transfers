@@ -1,4 +1,10 @@
-import { BaseCollection, BaseToken, TokenStandard } from '@infinityxyz/lib/types/core';
+import {
+  BaseCollection,
+  BaseToken,
+  TokenStandard,
+  UserOwnedCollection,
+  UserOwnedToken
+} from '@infinityxyz/lib/types/core';
 import { FirestoreOrder } from '@infinityxyz/lib/types/core/OBOrder';
 import { trimLowerCase } from '@infinityxyz/lib/utils';
 import { firestoreConstants } from '@infinityxyz/lib/utils/constants';
@@ -6,7 +12,6 @@ import { getCollectionDocId } from '@infinityxyz/lib/utils/firestore';
 import { getDb } from 'firestore';
 import { Order } from 'models/order';
 import { OrderItem } from 'models/order-item';
-import { UserOwnedCollection } from 'types/user-owned-collection';
 import { Transfer, TransferEmitter, TransferEventType } from './types/transfer';
 
 export type TransferHandlerFn = {
@@ -191,21 +196,21 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
         numCollectionNftsOwned += 1;
       }
       const collectionDocData = collectionDocRef.data() as BaseCollection;
-      const data: UserOwnedCollection = {
+      const userOwnedCollectionData: UserOwnedCollection = {
         chainId: collectionDocData.chainId,
-        address: collectionDocData.address,
-        slug: collectionDocData.slug,
-        name: collectionDocData.metadata.name,
-        description: collectionDocData.metadata.description,
-        symbol: collectionDocData.metadata.symbol,
-        profileImage: collectionDocData.metadata.profileImage,
-        bannerImage: collectionDocData.metadata.bannerImage,
+        collectionAddress: collectionDocData.address,
+        collectionSlug: collectionDocData.slug,
+        collectionName: collectionDocData.metadata.name,
+        collectionDescription: collectionDocData.metadata.description,
+        collectionSymbol: collectionDocData.metadata.symbol,
+        collectionProfileImage: collectionDocData.metadata.profileImage,
+        collectionBannerImage: collectionDocData.metadata.bannerImage,
         displayType: collectionDocData.metadata.displayType ?? '',
         hasBlueCheck: collectionDocData.hasBlueCheck,
         tokenStandard,
         numCollectionNftsOwned
       };
-      batch.set(toUserCollectionDocRef, data, { merge: true });
+      batch.set(toUserCollectionDocRef, userOwnedCollectionData, { merge: true });
 
       // add the tokenDoc
       const tokenDataDoc = await db
@@ -216,10 +221,9 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
         .get();
       if (tokenDataDoc.exists) {
         const tokenData = tokenDataDoc.data() as BaseToken;
-        const data = {
-          ...tokenData,
-          collectionAddress: collectionAddress,
-          tokenStandard
+        const data: UserOwnedToken = {
+          ...userOwnedCollectionData,
+          ...tokenData
         };
         batch.set(toUserTokenDocRef, data, { merge: false });
       } else {
