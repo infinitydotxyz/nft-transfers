@@ -6,6 +6,7 @@ import { getCollectionDocId } from '@infinityxyz/lib/utils/firestore';
 import { getDb } from 'firestore';
 import { Order } from 'models/order';
 import { OrderItem } from 'models/order-item';
+import { UserOwnedCollection } from 'types/user-owned-collection';
 import { Transfer, TransferEmitter, TransferEventType } from './types/transfer';
 
 export type TransferHandlerFn = {
@@ -112,12 +113,7 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
   const collectionDocId = getCollectionDocId({ chainId, collectionAddress });
   const fromAddress = trimLowerCase(transfer.from);
   const toAddress = trimLowerCase(transfer.to);
-  const tokenStandard =
-    transfer.tokenStandard === '721'
-      ? TokenStandard.ERC721
-      : transfer.tokenStandard === '1155'
-      ? TokenStandard.ERC1155
-      : '';
+  const tokenStandard = transfer.tokenStandard === '721' ? TokenStandard.ERC721 : TokenStandard.ERC1155;
 
   // update the asset under collections/nfts collection
   const tokenDocRef = db
@@ -195,7 +191,7 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
         numCollectionNftsOwned += 1;
       }
       const collectionDocData = collectionDocRef.data() as BaseCollection;
-      const data = {
+      const data: UserOwnedCollection = {
         chainId: collectionDocData.chainId,
         address: collectionDocData.address,
         slug: collectionDocData.slug,
@@ -204,7 +200,8 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
         symbol: collectionDocData.metadata.symbol,
         profileImage: collectionDocData.metadata.profileImage,
         bannerImage: collectionDocData.metadata.bannerImage,
-        displayType: collectionDocData.metadata.displayType,
+        displayType: collectionDocData.metadata.displayType ?? '',
+        hasBlueCheck: collectionDocData.hasBlueCheck,
         tokenStandard,
         numCollectionNftsOwned
       };
