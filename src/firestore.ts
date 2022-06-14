@@ -8,6 +8,7 @@ export function initDb(serviceAccount: ServiceAccount): firebaseAdmin.firestore.
   firebaseAdmin.initializeApp({
     credential: firebaseAdmin.credential.cert(serviceAccount)
   });
+  firebaseAdmin.firestore().settings({ ignoreUndefinedProperties: true });
 
   return getDb();
 }
