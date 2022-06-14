@@ -6,12 +6,14 @@ import {
   UserOwnedToken
 } from '@infinityxyz/lib/types/core';
 import { FirestoreOrder } from '@infinityxyz/lib/types/core/OBOrder';
-import { trimLowerCase } from '@infinityxyz/lib/utils';
+import { getSearchFriendlyString, trimLowerCase } from '@infinityxyz/lib/utils';
 import { firestoreConstants } from '@infinityxyz/lib/utils/constants';
 import { getCollectionDocId } from '@infinityxyz/lib/utils/firestore';
+import { firestore } from 'firebase-admin';
 import { getDb } from 'firestore';
 import { Order } from 'models/order';
 import { OrderItem } from 'models/order-item';
+import { fetchTokenFromZora } from 'zora';
 import { Transfer, TransferEmitter, TransferEventType } from './types/transfer';
 
 export type TransferHandlerFn = {
@@ -138,24 +140,13 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
   // first check for the existence of this token in the user's collection
   // if it doesn't exist, no need to do anything
   if (fromUserTokenDoc.exists) {
-    // update numNftsOwned
-    const fromUserDocData = (await fromUserDocRef.get()).data();
-    let numNftsOwned = fromUserDocData?.numNftsOwned;
-    // ignore if we don't have this data
-    // it is assumed an external service will have populated this data
-    if (numNftsOwned !== undefined && numNftsOwned > 0) {
-      numNftsOwned -= 1;
-      batch.set(fromUserDocRef, { numNftsOwned }, { merge: true });
-    }
-
-    // update numCollectionNftsOwned
-    const fromUserCollectionDocData = (await fromUserCollectionDocRef.get()).data();
-    let numCollectionNftsOwned = fromUserCollectionDocData?.numCollectionNftsOwned;
-    // ignore if we don't have this data
-    if (numCollectionNftsOwned !== undefined && numCollectionNftsOwned > 0) {
-      numCollectionNftsOwned -= 1;
-      batch.set(fromUserCollectionDocRef, { numCollectionNftsOwned }, { merge: true });
-    }
+    // update numNftsOwned and numCollectionNftsOwned
+    batch.set(fromUserDocRef, { numNftsOwned: firestore.FieldValue.increment(-1) }, { merge: true });
+    batch.set(
+      fromUserCollectionDocRef,
+      { numCollectionNftsOwned: firestore.FieldValue.increment(-1) },
+      { merge: true }
+    );
 
     // delete the tokenDoc
     batch.delete(fromUserTokenDocRef);
@@ -179,24 +170,13 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
   // if it does exist, no need to do anything
   if (!toUserTokenDoc.exists) {
     // update numNftsOwned
-    const toUserDocData = (await toUserDocRef.get()).data();
-    let numNftsOwned = toUserDocData?.numNftsOwned;
-    if (numNftsOwned !== undefined) {
-      numNftsOwned += 1;
-      batch.set(toUserDocRef, { numNftsOwned }, { merge: true });
-    }
+    batch.set(toUserDocRef, { numNftsOwned: firestore.FieldValue.increment(1) }, { merge: true });
 
     // fetch collection data
     const collectionDocRef = await db.collection(firestoreConstants.COLLECTIONS_COLL).doc(collectionDocId).get();
     if (collectionDocRef.exists) {
-      // update numCollectionNftsOwned
-      const toUserCollectionDocData = (await toUserCollectionDocRef.get()).data();
-      let numCollectionNftsOwned = toUserCollectionDocData?.numCollectionNftsOwned;
-      if (numCollectionNftsOwned !== undefined) {
-        numCollectionNftsOwned += 1;
-      }
       const collectionDocData = collectionDocRef.data() as BaseCollection;
-      const userOwnedCollectionData: UserOwnedCollection = {
+      const userOwnedCollectionData: Omit<UserOwnedCollection, 'numCollectionNftsOwned'> = {
         chainId: collectionDocData.chainId,
         collectionAddress: collectionDocData.address,
         collectionSlug: collectionDocData.slug,
@@ -207,10 +187,10 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
         collectionBannerImage: collectionDocData.metadata.bannerImage,
         displayType: collectionDocData.metadata.displayType ?? '',
         hasBlueCheck: collectionDocData.hasBlueCheck,
-        tokenStandard,
-        numCollectionNftsOwned
+        tokenStandard
       };
       batch.set(toUserCollectionDocRef, userOwnedCollectionData, { merge: true });
+      batch.set(toUserCollectionDocRef, { numCollectionNftsOwned: firestore.FieldValue.increment(1) }, { merge: true });
 
       // add the tokenDoc
       const tokenDataDoc = await db
@@ -219,15 +199,46 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
         .collection(firestoreConstants.COLLECTION_NFTS_COLL)
         .doc(tokenId)
         .get();
+
       if (tokenDataDoc.exists) {
         const tokenData = tokenDataDoc.data() as BaseToken;
         const data: UserOwnedToken = {
           ...userOwnedCollectionData,
           ...tokenData
         };
-        batch.set(toUserTokenDocRef, data, { merge: false });
+        batch.set(toUserTokenDocRef, data, { merge: true });
       } else {
-        console.log('Transfer Handler: To user token doc does not exist', toAddress, collectionAddress, tokenId);
+        const zoraTokenData = await fetchTokenFromZora(chainId, collectionAddress, tokenId);
+        const userAssetData: Partial<UserOwnedToken> = {
+          ...userOwnedCollectionData,
+          tokenId: zoraTokenData.data.token.token.tokenId,
+          slug: getSearchFriendlyString(zoraTokenData.data?.token?.token?.name),
+          metadata: {
+            name: zoraTokenData.data?.token?.token?.name,
+            description: zoraTokenData.data?.token?.token?.description,
+            image: zoraTokenData.data?.token?.token?.image?.url,
+            attributes: zoraTokenData.data?.token?.token?.attributes
+          },
+          minter: zoraTokenData.data?.token?.token?.mintInfo?.originatorAddress,
+          mintedAt: new Date(zoraTokenData.data?.token?.token?.mintInfo?.mintContext?.blockTimestamp).getTime(),
+          mintTxHash: zoraTokenData.data?.token?.token?.mintInfo?.mintContext?.transactionHash,
+          mintPrice: zoraTokenData.data?.token?.token?.mintInfo?.price?.chainTokenPrice?.decimal,
+          owner: zoraTokenData.data?.token?.token?.owner,
+          tokenStandard: TokenStandard.ERC721,
+          numTraitTypes: zoraTokenData.data?.token?.token?.attributes?.length,
+          zoraImage: zoraTokenData.data?.token?.token?.image,
+          zoraContent: zoraTokenData.data?.token?.token?.content,
+          image: {
+            url:
+              zoraTokenData.data?.token?.token?.image?.mediaEncoding?.preview ??
+              zoraTokenData.data?.token?.token?.image?.mediaEncoding?.large,
+            updatedAt: Date.now(),
+            originalUrl: zoraTokenData.data?.token?.token?.image?.url
+          },
+          tokenUri: zoraTokenData.data?.token?.token?.tokenUrl,
+          updatedAt: Date.now()
+        };
+        batch.set(toUserTokenDocRef, userAssetData, { merge: true });
       }
     } else {
       console.log('Transfer Handler: Collection doc does not exist (not indexed)', collectionDocId);
