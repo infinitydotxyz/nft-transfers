@@ -38,6 +38,7 @@ export function server(transferEmitter: TransferEmitter): void {
         address: trimLowerCase(goldskyTransfer.event.data.new.contract),
         chainId: ChainId.Mainnet,
         tokenId: goldskyTransfer.event.data.new.token_id,
+        tokenStandard: goldskyTransfer.event.data.new.type,
         blockNumber: goldskyTransfer.event.data.new.block_number,
         timestamp: goldskyTransfer.event.data.new.timestamp * 1000,
         type: transferType
@@ -50,6 +51,7 @@ export function server(transferEmitter: TransferEmitter): void {
         address: trimLowerCase(goldskyTransfer.event.data.old.contract),
         chainId: ChainId.Mainnet,
         tokenId: goldskyTransfer.event.data.old.token_id,
+        tokenStandard: goldskyTransfer.event.data.old.type,
         blockNumber: goldskyTransfer.event.data.old.block_number,
         timestamp: goldskyTransfer.event.data.old.timestamp * 1000,
         type: transferType

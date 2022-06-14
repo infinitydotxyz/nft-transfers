@@ -35,7 +35,7 @@
     "src/**/*": "prettier --write --ignore-unknown"
   },
   "dependencies": {
-    "@infinityxyz/lib": "^1.88.1",
+    "@infinityxyz/lib": "^1.89.3",
     "chalk": "^4.1.2",
     "dotenv": "^16.0.0",
     "emittery": "^0.10.2",
