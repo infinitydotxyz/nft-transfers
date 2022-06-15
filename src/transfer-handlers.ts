@@ -9,6 +9,7 @@ import { FirestoreOrder } from '@infinityxyz/lib/types/core/OBOrder';
 import { getSearchFriendlyString, trimLowerCase } from '@infinityxyz/lib/utils';
 import { firestoreConstants } from '@infinityxyz/lib/utils/constants';
 import { getCollectionDocId } from '@infinityxyz/lib/utils/firestore';
+import { fetchTokenFromAlchemy } from 'alchemy';
 import { firestore } from 'firebase-admin';
 import { getDb } from 'firestore';
 import { Order } from 'models/order';
@@ -208,7 +209,11 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
         };
         batch.set(toUserTokenDocRef, data, { merge: true });
       } else {
+        // fetch token data from Zora
         const zoraTokenData = await fetchTokenFromZora(chainId, collectionAddress, tokenId);
+        // fetch token data from Alchemy for its cached image
+        const alchemyData = await fetchTokenFromAlchemy(chainId, collectionAddress, tokenId);
+
         const userAssetData: Partial<UserOwnedToken> = {
           ...userOwnedCollectionData,
           tokenId: zoraTokenData.data.token.token.tokenId,
@@ -228,6 +233,7 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
           numTraitTypes: zoraTokenData.data?.token?.token?.attributes?.length,
           zoraImage: zoraTokenData.data?.token?.token?.image,
           zoraContent: zoraTokenData.data?.token?.token?.content,
+          alchemyCachedImage: alchemyData?.media?.[0]?.gateway,
           image: {
             url:
               zoraTokenData.data?.token?.token?.image?.mediaEncoding?.preview ??
