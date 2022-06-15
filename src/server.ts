@@ -18,7 +18,7 @@ export async function server(transferEmitter: TransferEmitter, transferEndpoint:
     app.post(`${transferEndpoint.pathname}`, (req, res) => {
       const authHeader = req.headers['gs-webhook-auth'];
       if (authHeader !== GOLDSKY_AUTH_HEADER) {
-        res.send(401);
+        res.sendStatus(401);
         console.error('Received invalid auth header');
         return;
       }

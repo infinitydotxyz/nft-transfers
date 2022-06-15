@@ -8,8 +8,6 @@ const zoraClient = new GraphQLClient(ZORA_API_ENDPOINT, {
   }
 });
 
-console.log('zora key', process.env.ZORA_API_KEY);
-
 export async function fetchTokenFromZora(
   chainId: string,
   collectionAddress: string,
