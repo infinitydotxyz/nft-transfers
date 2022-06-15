@@ -138,6 +138,7 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
   batch.set(tokenDocRef, { owner: transfer.to }, { merge: true });
 
   // update fromUser
+  // todo: if fromUser is 0x0, then its a mint
   const fromUserDocRef = db.collection(firestoreConstants.USERS_COLL).doc(fromAddress);
   const fromUserCollectionDocRef = fromUserDocRef
     .collection(firestoreConstants.USER_COLLECTIONS_COLL)
