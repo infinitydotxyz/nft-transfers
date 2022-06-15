@@ -2,8 +2,7 @@ import { ServiceAccount } from 'firebase-admin';
 import { getServiceName } from 'utils';
 import { join } from 'path';
 import { HookdeckConfig } from 'hookdeck/hookdeck.types';
-// todo adi update this for prod
-import * as serviceAccountJson from './creds/nftc-dev-firebase.json';
+import * as serviceAccountJson from './creds/nftc-infinity-firebase.json';
 
 const serviceAccount = serviceAccountJson as ServiceAccount;
 
