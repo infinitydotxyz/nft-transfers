@@ -24,6 +24,7 @@ async function main(): Promise<void> {
   const initTransferListener: (emitter: TransferEmitter, transferEndpoint: URL) => Promise<void> = server;
 
   // TODO add infinity addresses
+  // dont think we need this anymore
   const INFINITY_CONTRACT_ADDRESS = '';
   const addressesToExclude = [INFINITY_CONTRACT_ADDRESS].map((address) => trimLowerCase(address));
 
