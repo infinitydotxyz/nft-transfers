@@ -28,7 +28,6 @@ export async function fetchTokenFromAlchemy(
     return data;
   } catch (err) {
     console.error('failed to get user nfts from alchemy', err);
-    return undefined;
   }
 }
 

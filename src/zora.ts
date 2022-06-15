@@ -12,9 +12,10 @@ export async function fetchTokenFromZora(
   chainId: string,
   collectionAddress: string,
   tokenId: string
-): Promise<ZoraSingleTokenResponse> {
-  console.log('Fetching zora data for chainId', chainId, 'collection', collectionAddress, 'tokenId', tokenId);
-  const query = gql`
+): Promise<ZoraSingleTokenResponse | undefined> {
+  try {
+    console.log('Fetching zora data for chainId', chainId, 'collection', collectionAddress, 'tokenId', tokenId);
+    const query = gql`
     query TokenQuery {
       token(token: { address: "${collectionAddress}", tokenId: "${tokenId}" }) {
         token {
@@ -102,8 +103,11 @@ export async function fetchTokenFromZora(
     }
   `;
 
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-  const data = (await zoraClient.request(query)) as ZoraSingleTokenResponse;
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-  return data;
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    const data = (await zoraClient.request(query)) as ZoraSingleTokenResponse;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    return data;
+  } catch (e) {
+    console.error('failed to get nft from zora', chainId, collectionAddress, tokenId, e);
+  }
 }

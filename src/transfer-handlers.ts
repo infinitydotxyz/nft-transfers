@@ -6,7 +6,9 @@ import {
   UserOwnedToken
 } from '@infinityxyz/lib/types/core';
 import { FirestoreOrder } from '@infinityxyz/lib/types/core/OBOrder';
-import { getSearchFriendlyString, trimLowerCase } from '@infinityxyz/lib/utils';
+import { AlchemyNftWithMetadata } from '@infinityxyz/lib/types/services/alchemy';
+import { ZoraToken } from '@infinityxyz/lib/types/services/zora/tokens';
+import { getSearchFriendlyString, hexToDecimalTokenId, trimLowerCase } from '@infinityxyz/lib/utils';
 import { firestoreConstants } from '@infinityxyz/lib/utils/constants';
 import { getCollectionDocId } from '@infinityxyz/lib/utils/firestore';
 import { fetchTokenFromAlchemy } from 'alchemy';
@@ -16,6 +18,21 @@ import { Order } from 'models/order';
 import { OrderItem } from 'models/order-item';
 import { fetchTokenFromZora } from 'zora';
 import { Transfer, TransferEmitter, TransferEventType } from './types/transfer';
+
+// these addresses are used to ignore 'to' ownership transfers
+const DEAD_ADDRESSES = new Set([
+  '0x000000000000000000000000000000000000dead',
+  '0x0000000000000000000000000000000000000000',
+  '0x0000000000000000000000000000000000000001',
+  '0x0000000000000000000000000000000000000002',
+  '0x0000000000000000000000000000000000000003',
+  '0x0000000000000000000000000000000000000004',
+  '0x0000000000000000000000000000000000000005',
+  '0x0000000000000000000000000000000000000006',
+  '0x0000000000000000000000000000000000000007',
+  '0x0000000000000000000000000000000000000008',
+  '0x0000000000000000000000000000000000000009'
+]);
 
 export type TransferHandlerFn = {
   fn: (transfer: Transfer) => Promise<void> | void;
@@ -162,7 +179,21 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
     console.log('Transfer Handler: From user token doc does not exist', fromAddress, collectionAddress, tokenId);
   }
 
-  // update toUser
+  // update toUser; ignore if its a dead address
+  if (DEAD_ADDRESSES.has(toAddress)) {
+    // commit the batch so far and return
+    batch
+      .commit()
+      .then(() => {
+        console.log(`Updated ownership of ${chainId}:${collectionAddress}:${tokenId} to ${transfer.to}`);
+      })
+      .catch((err) => {
+        console.error(`Failed to update ownership of ${chainId}:${collectionAddress}:${tokenId} to ${transfer.to}`);
+        console.error(err);
+      });
+
+    return;
+  }
   const toUserDocRef = db.collection(firestoreConstants.USERS_COLL).doc(toAddress);
   const toUserCollectionDocRef = toUserDocRef.collection(firestoreConstants.USER_COLLECTIONS_COLL).doc(collectionDocId);
   const toUserTokenDocRef = toUserCollectionDocRef.collection(firestoreConstants.USER_NFTS_COLL).doc(tokenId);
@@ -201,7 +232,7 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
         .doc(tokenId)
         .get();
 
-      if (tokenDataDoc.exists) {
+      if (tokenDataDoc.exists && tokenDataDoc.data()) {
         const tokenData = tokenDataDoc.data() as BaseToken;
         const data: UserOwnedToken = {
           ...userOwnedCollectionData,
@@ -211,40 +242,27 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
       } else {
         // fetch token data from Zora
         const zoraTokenData = await fetchTokenFromZora(chainId, collectionAddress, tokenId);
-        // fetch token data from Alchemy for its cached image
+        // fetch token data from Alchemy for its cached image and as a possible backup
         const alchemyData = await fetchTokenFromAlchemy(chainId, collectionAddress, tokenId);
 
-        const userAssetData: Partial<UserOwnedToken> = {
-          ...userOwnedCollectionData,
-          tokenId: zoraTokenData.data.token.token.tokenId,
-          slug: getSearchFriendlyString(zoraTokenData.data?.token?.token?.name),
-          metadata: {
-            name: zoraTokenData.data?.token?.token?.name,
-            description: zoraTokenData.data?.token?.token?.description,
-            image: zoraTokenData.data?.token?.token?.image?.url,
-            attributes: zoraTokenData.data?.token?.token?.attributes
-          },
-          minter: zoraTokenData.data?.token?.token?.mintInfo?.originatorAddress,
-          mintedAt: new Date(zoraTokenData.data?.token?.token?.mintInfo?.mintContext?.blockTimestamp).getTime(),
-          mintTxHash: zoraTokenData.data?.token?.token?.mintInfo?.mintContext?.transactionHash,
-          mintPrice: zoraTokenData.data?.token?.token?.mintInfo?.price?.chainTokenPrice?.decimal,
-          owner: zoraTokenData.data?.token?.token?.owner,
-          tokenStandard: TokenStandard.ERC721,
-          numTraitTypes: zoraTokenData.data?.token?.token?.attributes?.length,
-          zoraImage: zoraTokenData.data?.token?.token?.image,
-          zoraContent: zoraTokenData.data?.token?.token?.content,
-          alchemyCachedImage: alchemyData?.media?.[0]?.gateway,
-          image: {
-            url:
-              zoraTokenData.data?.token?.token?.image?.mediaEncoding?.preview ??
-              zoraTokenData.data?.token?.token?.image?.mediaEncoding?.large,
-            updatedAt: Date.now(),
-            originalUrl: zoraTokenData.data?.token?.token?.image?.url
-          },
-          tokenUri: zoraTokenData.data?.token?.token?.tokenUrl,
-          updatedAt: Date.now()
-        };
-        batch.set(toUserTokenDocRef, userAssetData, { merge: true });
+        if (zoraTokenData?.data?.token?.token) {
+          const transformedData = transformZoraTokenData(zoraTokenData.data.token.token);
+          const userAssetData = {
+            ...userOwnedCollectionData,
+            ...transformedData,
+            alchemyCachedImage: alchemyData?.media?.[0]?.gateway
+          };
+          batch.set(toUserTokenDocRef, userAssetData, { merge: true });
+        } else if (alchemyData) {
+          const transformedData = transformAlchemyTokenData(alchemyData);
+          const userAssetData = {
+            ...userOwnedCollectionData,
+            ...transformedData
+          };
+          batch.set(toUserTokenDocRef, userAssetData, { merge: true });
+        } else {
+          console.log('Neither Zora or Alchemy has data for', chainId, collectionAddress, tokenId);
+        }
       }
     } else {
       console.log('Transfer Handler: Collection doc does not exist (not indexed)', collectionDocId);
@@ -262,4 +280,58 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
       console.error(`Failed to update ownership of ${chainId}:${collectionAddress}:${tokenId} to ${transfer.to}`);
       console.error(err);
     });
+}
+
+function transformZoraTokenData(fetchedTokenData: ZoraToken['token']): Partial<UserOwnedToken> {
+  const transformedData: Partial<UserOwnedToken> = {
+    tokenId: fetchedTokenData.tokenId,
+    slug: getSearchFriendlyString(fetchedTokenData.name),
+    metadata: {
+      name: fetchedTokenData.name,
+      description: fetchedTokenData.description,
+      image: fetchedTokenData.image?.url,
+      attributes: fetchedTokenData.attributes
+    },
+    minter: fetchedTokenData.mintInfo?.originatorAddress,
+    mintedAt: new Date(fetchedTokenData.mintInfo?.mintContext?.blockTimestamp).getTime(),
+    mintTxHash: fetchedTokenData.mintInfo?.mintContext?.transactionHash,
+    mintPrice: fetchedTokenData.mintInfo?.price?.chainTokenPrice?.decimal,
+    owner: fetchedTokenData.owner,
+    tokenStandard: TokenStandard.ERC721,
+    numTraitTypes: fetchedTokenData.attributes?.length,
+    zoraImage: fetchedTokenData.image,
+    zoraContent: fetchedTokenData.content,
+    image: {
+      url: fetchedTokenData.image?.mediaEncoding?.preview ?? fetchedTokenData.image?.mediaEncoding?.large,
+      updatedAt: Date.now(),
+      originalUrl: fetchedTokenData.image?.url
+    },
+    tokenUri: fetchedTokenData.tokenUrl,
+    updatedAt: Date.now()
+  };
+  return transformedData;
+}
+
+function transformAlchemyTokenData(fetchedTokenData: AlchemyNftWithMetadata): Partial<UserOwnedToken> {
+  const transformedData: Partial<UserOwnedToken> = {
+    tokenId: hexToDecimalTokenId(fetchedTokenData.id.tokenId),
+    slug: getSearchFriendlyString(fetchedTokenData.title ?? fetchedTokenData.metadata.name),
+    metadata: {
+      name: fetchedTokenData.title ?? fetchedTokenData.metadata.name,
+      description: fetchedTokenData.description ?? fetchedTokenData.metadata.description,
+      image: fetchedTokenData.metadata?.image,
+      attributes: fetchedTokenData.metadata?.attributes
+    },
+    tokenStandard: TokenStandard.ERC721,
+    numTraitTypes: fetchedTokenData.metadata?.attributes?.length,
+    alchemyCachedImage: fetchedTokenData.media?.[0]?.gateway,
+    image: {
+      url: fetchedTokenData.media?.[0]?.gateway ?? fetchedTokenData.media?.[0]?.raw,
+      updatedAt: Date.now(),
+      originalUrl: fetchedTokenData.media?.[0]?.raw ?? fetchedTokenData.metadata?.image
+    },
+    tokenUri: fetchedTokenData.tokenUri?.gateway ?? fetchedTokenData.tokenUri?.raw,
+    updatedAt: Date.now()
+  };
+  return transformedData;
 }
