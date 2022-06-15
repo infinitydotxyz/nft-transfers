@@ -13,10 +13,10 @@ export async function fetchTokenFromZora(
   collectionAddress: string,
   tokenId: string
 ): Promise<ZoraSingleTokenResponse> {
-  console.log('Fetching zora data for', collectionAddress, 'tokenId', tokenId);
+  console.log('Fetching zora data for chainId', chainId, 'collection', collectionAddress, 'tokenId', tokenId);
   const query = gql`
     query TokenQuery {
-      token(token: { address: "0x726719d0b5d62bde627372d449c23dac8661d523", tokenId: "6560" }) {
+      token(token: { address: "${collectionAddress}", tokenId: "${tokenId}" }) {
         token {
           collectionName
           owner

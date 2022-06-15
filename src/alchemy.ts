@@ -4,13 +4,14 @@ import { normalize } from 'path';
 import axios from 'axios';
 
 const client = axios.create();
-const apiKey = process.env.ALCHEMY_API_KEY_MAINNET ?? '';
+const apiKey = process.env.ALCHEMY_API_KEY ?? '';
 
 export async function fetchTokenFromAlchemy(
   chainId: ChainId,
   collectionAddress: string,
   tokenId: string
 ): Promise<AlchemyNftWithMetadata | undefined> {
+  console.log('Fetching token from Alchemy for', chainId, collectionAddress, tokenId);
   const url = getBaseUrl(chainId, '/getNFTMetadata');
   try {
     const response = await client.get(url.toString(), {
