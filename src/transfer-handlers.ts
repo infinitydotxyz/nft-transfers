@@ -14,9 +14,10 @@ import { firestoreConstants, NULL_ADDRESS } from '@infinityxyz/lib/utils/constan
 import { getCollectionDocId } from '@infinityxyz/lib/utils/firestore';
 import { fetchTokenFromAlchemy } from 'alchemy';
 import { firestore } from 'firebase-admin';
-import { getDb } from 'firestore';
+import { infinityDb, pixelScoreDb } from 'firestore';
 import { Order } from 'models/order';
 import { OrderItem } from 'models/order-item';
+import { getDocIdHash } from 'utils';
 import { fetchTokenFromZora } from 'zora';
 import { Transfer, TransferEmitter, TransferEventType } from './types/transfer';
 
@@ -34,6 +35,8 @@ const DEAD_ADDRESSES = new Set([
   '0x0000000000000000000000000000000000000008',
   '0x0000000000000000000000000000000000000009'
 ]);
+
+const PIXELSCORE_DB_RANKINGS_COLL = 'rankings';
 
 export type TransferHandlerFn = {
   fn: (transfer: Transfer) => Promise<void> | void;
@@ -120,8 +123,7 @@ export async function updateOrders(transfer: Transfer): Promise<void> {
 }
 
 export async function updateOwnership(transfer: Transfer): Promise<void> {
-  const db = getDb();
-  const batch = db.batch();
+  const batch = infinityDb.batch();
   const chainId = transfer.chainId;
   const collectionAddress = trimLowerCase(transfer.address);
   const tokenId = transfer.tokenId;
@@ -131,7 +133,7 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
   const tokenStandard = transfer.tokenStandard === TokenStandard.ERC721 ? TokenStandard.ERC721 : TokenStandard.ERC1155;
 
   // update the asset under collections/nfts collection
-  const collectionNftDocRef = db
+  const collectionNftDocRef = infinityDb
     .collection(firestoreConstants.COLLECTIONS_COLL)
     .doc(collectionDocId)
     .collection(firestoreConstants.COLLECTION_NFTS_COLL)
@@ -139,10 +141,13 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
   batch.set(collectionNftDocRef, { owner: transfer.to }, { merge: true });
 
   // update fromUser
-  await updateFromUserDoc(fromAddress, chainId, collectionAddress, tokenId, db, batch);
+  await updateFromUserDoc(fromAddress, chainId, collectionAddress, tokenId, batch);
 
   // update toUser
-  await updateToUserDoc(toAddress, chainId, collectionAddress, tokenId, tokenStandard, db, batch);
+  await updateToUserDoc(toAddress, chainId, collectionAddress, tokenId, tokenStandard, batch);
+
+  // updare pixelScoreDb
+  updatePixelScoreDb(toAddress, chainId, collectionAddress, tokenId);
 
   batch
     .commit()
@@ -160,12 +165,11 @@ async function updateFromUserDoc(
   chainId: string,
   collectionAddress: string,
   tokenId: string,
-  db: FirebaseFirestore.Firestore,
   batch: FirebaseFirestore.WriteBatch
 ): Promise<void> {
   if (fromAddress !== NULL_ADDRESS) {
     const collectionDocId = getCollectionDocId({ chainId, collectionAddress });
-    const fromUserDocRef = db.collection(firestoreConstants.USERS_COLL).doc(fromAddress);
+    const fromUserDocRef = infinityDb.collection(firestoreConstants.USERS_COLL).doc(fromAddress);
     const fromUserCollectionDocRef = fromUserDocRef
       .collection(firestoreConstants.USER_COLLECTIONS_COLL)
       .doc(collectionDocId);
@@ -206,17 +210,16 @@ async function updateToUserDoc(
   collectionAddress: string,
   tokenId: string,
   tokenStandard: TokenStandard,
-  db: FirebaseFirestore.Firestore,
   batch: FirebaseFirestore.WriteBatch
 ): Promise<void> {
   if (!DEAD_ADDRESSES.has(toAddress)) {
     const collectionDocId = getCollectionDocId({ chainId, collectionAddress });
-    const collectionNftDocRef = db
+    const collectionNftDocRef = infinityDb
       .collection(firestoreConstants.COLLECTIONS_COLL)
       .doc(collectionDocId)
       .collection(firestoreConstants.COLLECTION_NFTS_COLL)
       .doc(tokenId);
-    const toUserDocRef = db.collection(firestoreConstants.USERS_COLL).doc(toAddress);
+    const toUserDocRef = infinityDb.collection(firestoreConstants.USERS_COLL).doc(toAddress);
     const toUserCollectionDocRef = toUserDocRef
       .collection(firestoreConstants.USER_COLLECTIONS_COLL)
       .doc(collectionDocId);
@@ -229,7 +232,10 @@ async function updateToUserDoc(
       batch.set(toUserDocRef, { numNftsOwned: firestore.FieldValue.increment(1) }, { merge: true });
 
       // fetch collection data
-      const collectionDocRef = await db.collection(firestoreConstants.COLLECTIONS_COLL).doc(collectionDocId).get();
+      const collectionDocRef = await infinityDb
+        .collection(firestoreConstants.COLLECTIONS_COLL)
+        .doc(collectionDocId)
+        .get();
       if (collectionDocRef.exists) {
         const collectionDocData = collectionDocRef.data() as BaseCollection;
         const userOwnedCollectionData: Omit<UserOwnedCollection, 'numCollectionNftsOwned'> = {
@@ -293,6 +299,16 @@ async function updateToUserDoc(
       console.log('Transfer Handler: To user token doc already exists', toAddress, collectionAddress, tokenId);
     }
   }
+}
+
+function updatePixelScoreDb(owner: string, chainId: string, collectionAddress: string, tokenId: string) {
+  const docId = getDocIdHash({ chainId, collectionAddress, tokenId });
+  pixelScoreDb
+    .doc(`${PIXELSCORE_DB_RANKINGS_COLL}/${docId}`)
+    .set({ owner }, { merge: true })
+    .catch((err) => {
+      console.log('Error updating ownership info in pixelscore db', err);
+    });
 }
 
 function transformZoraTokenData(fetchedTokenData: ZoraToken['token']): Partial<UserOwnedToken> {

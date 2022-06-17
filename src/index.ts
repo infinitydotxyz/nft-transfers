@@ -1,11 +1,10 @@
-import { initDb } from 'firestore';
 import { server } from 'server';
 import * as Emittery from 'emittery';
 import { transferHandler, updateOrdersHandler, updateOwnershipHandler } from 'transfer-handlers';
 import { TransferEvent, TransferEmitter, Transfer } from 'types/transfer';
 import { HookdeckService } from 'hookdeck/hookdeck.service';
 import * as chalk from 'chalk';
-import { hookdeckConfigs, serviceAccount, transferEndpoint } from 'config';
+import { hookdeckConfigs, transferEndpoint } from 'config';
 
 const log = {
   fn: (transfer: Transfer) => {
@@ -16,8 +15,6 @@ const log = {
 };
 
 async function main(): Promise<void> {
-  initDb(serviceAccount);
-
   const transferEmitter = new Emittery<TransferEvent>();
   const initTransferListener: (emitter: TransferEmitter, transferEndpoint: URL) => Promise<void> = server;
 

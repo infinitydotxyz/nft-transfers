@@ -1,6 +1,6 @@
 import { firestoreConstants } from '@infinityxyz/lib/utils/constants';
 import { isOBOrderExpired } from '@infinityxyz/lib/utils/orders';
-import { getDb, getUsername } from 'firestore';
+import { getUsername, infinityDb } from 'firestore';
 import { Transfer } from 'types/transfer';
 import { OrderType } from './order.types';
 import { FirestoreOrderItem, OBOrderStatus } from '@infinityxyz/lib/types/core/OBOrder';
@@ -9,9 +9,7 @@ export class OrderItem {
   static readonly OWNER_INHERITS_OFFERS = true;
 
   static getImpactedOrderItemsQueries(transfer: Transfer): Record<string, FirebaseFirestore.Query<FirestoreOrderItem>> {
-    const db = getDb();
-
-    const tokenQuery = db
+    const tokenQuery = infinityDb
       .collectionGroup(firestoreConstants.ORDER_ITEMS_SUB_COLL)
       .where('chainId', '==', transfer.chainId)
       .where('collectionAddress', '==', transfer.address)
