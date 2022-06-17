@@ -1,6 +1,7 @@
 import {
   BaseCollection,
   BaseToken,
+  ChainId,
   TokenStandard,
   UserOwnedCollection,
   UserOwnedToken
@@ -138,7 +139,32 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
   batch.set(collectionNftDocRef, { owner: transfer.to }, { merge: true });
 
   // update fromUser
+  await updateFromUserDoc(fromAddress, chainId, collectionAddress, tokenId, db, batch);
+
+  // update toUser
+  await updateToUserDoc(toAddress, chainId, collectionAddress, tokenId, tokenStandard, db, batch);
+
+  batch
+    .commit()
+    .then(() => {
+      console.log(`Updated ownership of ${chainId}:${collectionAddress}:${tokenId} to ${transfer.to}`);
+    })
+    .catch((err) => {
+      console.error(`Failed to update ownership of ${chainId}:${collectionAddress}:${tokenId} to ${transfer.to}`);
+      console.error(err);
+    });
+}
+
+async function updateFromUserDoc(
+  fromAddress: string,
+  chainId: string,
+  collectionAddress: string,
+  tokenId: string,
+  db: FirebaseFirestore.Firestore,
+  batch: FirebaseFirestore.WriteBatch
+): Promise<void> {
   if (fromAddress !== NULL_ADDRESS) {
+    const collectionDocId = getCollectionDocId({ chainId, collectionAddress });
     const fromUserDocRef = db.collection(firestoreConstants.USERS_COLL).doc(fromAddress);
     const fromUserCollectionDocRef = fromUserDocRef
       .collection(firestoreConstants.USER_COLLECTIONS_COLL)
@@ -172,9 +198,24 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
       console.log('Transfer Handler: From user token doc does not exist', fromAddress, collectionAddress, tokenId);
     }
   }
+}
 
-  // update toUser; ignore if its a dead address
+async function updateToUserDoc(
+  toAddress: string,
+  chainId: ChainId,
+  collectionAddress: string,
+  tokenId: string,
+  tokenStandard: TokenStandard,
+  db: FirebaseFirestore.Firestore,
+  batch: FirebaseFirestore.WriteBatch
+): Promise<void> {
   if (!DEAD_ADDRESSES.has(toAddress)) {
+    const collectionDocId = getCollectionDocId({ chainId, collectionAddress });
+    const collectionNftDocRef = db
+      .collection(firestoreConstants.COLLECTIONS_COLL)
+      .doc(collectionDocId)
+      .collection(firestoreConstants.COLLECTION_NFTS_COLL)
+      .doc(tokenId);
     const toUserDocRef = db.collection(firestoreConstants.USERS_COLL).doc(toAddress);
     const toUserCollectionDocRef = toUserDocRef
       .collection(firestoreConstants.USER_COLLECTIONS_COLL)
@@ -252,16 +293,6 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
       console.log('Transfer Handler: To user token doc already exists', toAddress, collectionAddress, tokenId);
     }
   }
-
-  batch
-    .commit()
-    .then(() => {
-      console.log(`Updated ownership of ${chainId}:${collectionAddress}:${tokenId} to ${transfer.to}`);
-    })
-    .catch((err) => {
-      console.error(`Failed to update ownership of ${chainId}:${collectionAddress}:${tokenId} to ${transfer.to}`);
-      console.error(err);
-    });
 }
 
 function transformZoraTokenData(fetchedTokenData: ZoraToken['token']): Partial<UserOwnedToken> {
