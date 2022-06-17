@@ -2,7 +2,7 @@ import { firestoreConstants } from '@infinityxyz/lib/utils/constants';
 import fbAdmin from 'firebase-admin';
 
 import { default as pixelScoreServiceAccount } from './creds/pixelscore-firebase.json';
-import { default as infinityServiceAccount } from './creds/nftc-infinity-firebase.json';
+import { default as infinityServiceAccount } from './creds/nftc-dev-firebase.json';
 
 export const fsAdminPixelScore = fbAdmin.initializeApp(
   {
