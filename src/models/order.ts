@@ -1,14 +1,13 @@
 import { FirestoreOrder, FirestoreOrderItem, OBOrderStatus } from '@infinityxyz/lib/types/core/OBOrder';
 import { firestoreConstants } from '@infinityxyz/lib/utils/constants';
-import { getDb } from 'firestore';
+import { infinityDb } from 'firestore';
 import { Transfer } from 'types/transfer';
 import { OrderItem } from './order-item';
 import { OrderType } from './order.types';
 
 export class Order {
   static getRef(orderId: string): FirebaseFirestore.DocumentReference<FirestoreOrder> {
-    const db = getDb();
-    return db
+    return infinityDb
       .collection(firestoreConstants.ORDERS_COLL)
       .doc(orderId) as FirebaseFirestore.DocumentReference<FirestoreOrder>;
   }

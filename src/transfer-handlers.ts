@@ -1,6 +1,7 @@
 import {
   BaseCollection,
   BaseToken,
+  ChainId,
   TokenStandard,
   UserOwnedCollection,
   UserOwnedToken
@@ -9,13 +10,14 @@ import { FirestoreOrder } from '@infinityxyz/lib/types/core/OBOrder';
 import { AlchemyNftWithMetadata } from '@infinityxyz/lib/types/services/alchemy';
 import { ZoraToken } from '@infinityxyz/lib/types/services/zora/tokens';
 import { getSearchFriendlyString, hexToDecimalTokenId, trimLowerCase } from '@infinityxyz/lib/utils';
-import { firestoreConstants } from '@infinityxyz/lib/utils/constants';
+import { firestoreConstants, NULL_ADDRESS } from '@infinityxyz/lib/utils/constants';
 import { getCollectionDocId } from '@infinityxyz/lib/utils/firestore';
 import { fetchTokenFromAlchemy } from 'alchemy';
 import { firestore } from 'firebase-admin';
-import { getDb } from 'firestore';
+import { infinityDb, pixelScoreDb } from 'firestore';
 import { Order } from 'models/order';
 import { OrderItem } from 'models/order-item';
+import { getDocIdHash } from 'utils';
 import { fetchTokenFromZora } from 'zora';
 import { Transfer, TransferEmitter, TransferEventType } from './types/transfer';
 
@@ -33,6 +35,8 @@ const DEAD_ADDRESSES = new Set([
   '0x0000000000000000000000000000000000000008',
   '0x0000000000000000000000000000000000000009'
 ]);
+
+const PIXELSCORE_DB_RANKINGS_COLL = 'rankings';
 
 export type TransferHandlerFn = {
   fn: (transfer: Transfer) => Promise<void> | void;
@@ -119,8 +123,7 @@ export async function updateOrders(transfer: Transfer): Promise<void> {
 }
 
 export async function updateOwnership(transfer: Transfer): Promise<void> {
-  const db = getDb();
-  const batch = db.batch();
+  const batch = infinityDb.batch();
   const chainId = transfer.chainId;
   const collectionAddress = trimLowerCase(transfer.address);
   const tokenId = transfer.tokenId;
@@ -130,135 +133,21 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
   const tokenStandard = transfer.tokenStandard === TokenStandard.ERC721 ? TokenStandard.ERC721 : TokenStandard.ERC1155;
 
   // update the asset under collections/nfts collection
-  const tokenDocRef = db
+  const collectionNftDocRef = infinityDb
     .collection(firestoreConstants.COLLECTIONS_COLL)
     .doc(collectionDocId)
     .collection(firestoreConstants.COLLECTION_NFTS_COLL)
     .doc(tokenId);
-  batch.set(tokenDocRef, { owner: transfer.to }, { merge: true });
+  batch.set(collectionNftDocRef, { owner: transfer.to }, { merge: true });
 
   // update fromUser
-  const fromUserDocRef = db.collection(firestoreConstants.USERS_COLL).doc(fromAddress);
-  const fromUserCollectionDocRef = fromUserDocRef
-    .collection(firestoreConstants.USER_COLLECTIONS_COLL)
-    .doc(collectionDocId);
-  const fromUserTokenDocRef = fromUserCollectionDocRef.collection(firestoreConstants.USER_NFTS_COLL).doc(tokenId);
-  const fromUserTokenDoc = await fromUserTokenDocRef.get();
-  // first check for the existence of this token in the user's collection
-  // if it doesn't exist, no need to do anything
-  if (fromUserTokenDoc.exists) {
-    // update numNftsOwned and numCollectionNftsOwned
-    batch.set(fromUserDocRef, { numNftsOwned: firestore.FieldValue.increment(-1) }, { merge: true });
-    batch.set(
-      fromUserCollectionDocRef,
-      { numCollectionNftsOwned: firestore.FieldValue.increment(-1) },
-      { merge: true }
-    );
+  await updateFromUserDoc(fromAddress, chainId, collectionAddress, tokenId, batch);
 
-    // delete the tokenDoc
-    batch.delete(fromUserTokenDocRef);
+  // update toUser
+  await updateToUserDoc(toAddress, chainId, collectionAddress, tokenId, tokenStandard, batch);
 
-    // also delete collectionDoc if it is empty
-    const collectionNfts = await fromUserCollectionDocRef.collection(firestoreConstants.USER_NFTS_COLL).limit(2).get();
-    // 1 because we haven't deleted the tokenDoc yet
-    if (collectionNfts.size === 1) {
-      batch.delete(fromUserCollectionDocRef);
-    }
-  } else {
-    console.log('Transfer Handler: From user token doc does not exist', fromAddress, collectionAddress, tokenId);
-  }
-
-  // update toUser; ignore if its a dead address
-  if (DEAD_ADDRESSES.has(toAddress)) {
-    // commit the batch so far and return
-    batch
-      .commit()
-      .then(() => {
-        console.log(`Updated ownership of ${chainId}:${collectionAddress}:${tokenId} to ${transfer.to}`);
-      })
-      .catch((err) => {
-        console.error(`Failed to update ownership of ${chainId}:${collectionAddress}:${tokenId} to ${transfer.to}`);
-        console.error(err);
-      });
-
-    return;
-  }
-  const toUserDocRef = db.collection(firestoreConstants.USERS_COLL).doc(toAddress);
-  const toUserCollectionDocRef = toUserDocRef.collection(firestoreConstants.USER_COLLECTIONS_COLL).doc(collectionDocId);
-  const toUserTokenDocRef = toUserCollectionDocRef.collection(firestoreConstants.USER_NFTS_COLL).doc(tokenId);
-  const toUserTokenDoc = await toUserTokenDocRef.get();
-  // first check for the non-existence of this token in the user's collection
-  // if it does exist, no need to do anything
-  if (!toUserTokenDoc.exists) {
-    // update numNftsOwned
-    batch.set(toUserDocRef, { numNftsOwned: firestore.FieldValue.increment(1) }, { merge: true });
-
-    // fetch collection data
-    const collectionDocRef = await db.collection(firestoreConstants.COLLECTIONS_COLL).doc(collectionDocId).get();
-    if (collectionDocRef.exists) {
-      const collectionDocData = collectionDocRef.data() as BaseCollection;
-      const userOwnedCollectionData: Omit<UserOwnedCollection, 'numCollectionNftsOwned'> = {
-        chainId: collectionDocData.chainId,
-        collectionAddress: collectionDocData.address,
-        collectionSlug: collectionDocData.slug,
-        collectionName: collectionDocData.metadata?.name ?? '',
-        collectionDescription: collectionDocData.metadata?.description ?? '',
-        collectionSymbol: collectionDocData.metadata?.symbol ?? '',
-        collectionProfileImage: collectionDocData.metadata?.profileImage ?? '',
-        collectionBannerImage: collectionDocData.metadata?.bannerImage ?? '',
-        displayType: collectionDocData.metadata?.displayType ?? '',
-        hasBlueCheck: collectionDocData.hasBlueCheck,
-        tokenStandard
-      };
-      batch.set(toUserCollectionDocRef, userOwnedCollectionData, { merge: true });
-      batch.set(toUserCollectionDocRef, { numCollectionNftsOwned: firestore.FieldValue.increment(1) }, { merge: true });
-
-      // add the tokenDoc
-      const tokenDataDoc = await db
-        .collection(firestoreConstants.COLLECTIONS_COLL)
-        .doc(collectionDocId)
-        .collection(firestoreConstants.COLLECTION_NFTS_COLL)
-        .doc(tokenId)
-        .get();
-
-      if (tokenDataDoc.exists && tokenDataDoc.data()) {
-        const tokenData = tokenDataDoc.data() as BaseToken;
-        const data: UserOwnedToken = {
-          ...userOwnedCollectionData,
-          ...tokenData
-        };
-        batch.set(toUserTokenDocRef, data, { merge: true });
-      } else {
-        // fetch token data from Zora
-        const zoraTokenData = await fetchTokenFromZora(chainId, collectionAddress, tokenId);
-        // fetch token data from Alchemy for its cached image and as a possible backup
-        const alchemyData = await fetchTokenFromAlchemy(chainId, collectionAddress, tokenId);
-
-        if (zoraTokenData?.data?.token?.token) {
-          const transformedData = transformZoraTokenData(zoraTokenData.data.token.token);
-          const userAssetData = {
-            ...userOwnedCollectionData,
-            ...transformedData,
-            alchemyCachedImage: alchemyData?.media?.[0]?.gateway
-          };
-          batch.set(toUserTokenDocRef, userAssetData, { merge: true });
-        } else if (alchemyData) {
-          const transformedData = transformAlchemyTokenData(alchemyData);
-          const userAssetData = {
-            ...userOwnedCollectionData,
-            ...transformedData
-          };
-          batch.set(toUserTokenDocRef, userAssetData, { merge: true });
-        } else {
-          console.log('Neither Zora or Alchemy has data for', chainId, collectionAddress, tokenId);
-        }
-      }
-    } else {
-      console.log('Transfer Handler: Collection doc does not exist (not indexed)', collectionDocId);
-    }
-  } else {
-    console.log('Transfer Handler: To user token doc already exists', toAddress, collectionAddress, tokenId);
-  }
+  // updare pixelScoreDb
+  updatePixelScoreDb(toAddress, chainId, collectionAddress, tokenId);
 
   batch
     .commit()
@@ -268,6 +157,157 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
     .catch((err) => {
       console.error(`Failed to update ownership of ${chainId}:${collectionAddress}:${tokenId} to ${transfer.to}`);
       console.error(err);
+    });
+}
+
+async function updateFromUserDoc(
+  fromAddress: string,
+  chainId: string,
+  collectionAddress: string,
+  tokenId: string,
+  batch: FirebaseFirestore.WriteBatch
+): Promise<void> {
+  if (fromAddress !== NULL_ADDRESS) {
+    const collectionDocId = getCollectionDocId({ chainId, collectionAddress });
+    const fromUserDocRef = infinityDb.collection(firestoreConstants.USERS_COLL).doc(fromAddress);
+    const fromUserCollectionDocRef = fromUserDocRef
+      .collection(firestoreConstants.USER_COLLECTIONS_COLL)
+      .doc(collectionDocId);
+    const fromUserTokenDocRef = fromUserCollectionDocRef.collection(firestoreConstants.USER_NFTS_COLL).doc(tokenId);
+    const fromUserTokenDoc = await fromUserTokenDocRef.get();
+    // first check for the existence of this token in the user's collection
+    // if it doesn't exist, no need to do anything
+    if (fromUserTokenDoc.exists) {
+      // update numNftsOwned and numCollectionNftsOwned
+      batch.set(fromUserDocRef, { numNftsOwned: firestore.FieldValue.increment(-1) }, { merge: true });
+      batch.set(
+        fromUserCollectionDocRef,
+        { numCollectionNftsOwned: firestore.FieldValue.increment(-1) },
+        { merge: true }
+      );
+
+      // delete the tokenDoc
+      batch.delete(fromUserTokenDocRef);
+
+      // also delete collectionDoc if it is empty
+      const collectionNfts = await fromUserCollectionDocRef
+        .collection(firestoreConstants.USER_NFTS_COLL)
+        .limit(2)
+        .get();
+      // 1 because we haven't deleted the tokenDoc yet
+      if (collectionNfts.size === 1) {
+        batch.delete(fromUserCollectionDocRef);
+      }
+    } else {
+      console.log('Transfer Handler: From user token doc does not exist', fromAddress, collectionAddress, tokenId);
+    }
+  }
+}
+
+async function updateToUserDoc(
+  toAddress: string,
+  chainId: ChainId,
+  collectionAddress: string,
+  tokenId: string,
+  tokenStandard: TokenStandard,
+  batch: FirebaseFirestore.WriteBatch
+): Promise<void> {
+  if (!DEAD_ADDRESSES.has(toAddress)) {
+    const collectionDocId = getCollectionDocId({ chainId, collectionAddress });
+    const collectionNftDocRef = infinityDb
+      .collection(firestoreConstants.COLLECTIONS_COLL)
+      .doc(collectionDocId)
+      .collection(firestoreConstants.COLLECTION_NFTS_COLL)
+      .doc(tokenId);
+    const toUserDocRef = infinityDb.collection(firestoreConstants.USERS_COLL).doc(toAddress);
+    const toUserCollectionDocRef = toUserDocRef
+      .collection(firestoreConstants.USER_COLLECTIONS_COLL)
+      .doc(collectionDocId);
+    const toUserTokenDocRef = toUserCollectionDocRef.collection(firestoreConstants.USER_NFTS_COLL).doc(tokenId);
+    const toUserTokenDoc = await toUserTokenDocRef.get();
+    // first check for the non-existence of this token in the user's collection
+    // if it does exist, no need to do anything
+    if (!toUserTokenDoc.exists) {
+      // update numNftsOwned
+      batch.set(toUserDocRef, { numNftsOwned: firestore.FieldValue.increment(1) }, { merge: true });
+
+      // fetch collection data
+      const collectionDocRef = await infinityDb
+        .collection(firestoreConstants.COLLECTIONS_COLL)
+        .doc(collectionDocId)
+        .get();
+      if (collectionDocRef.exists) {
+        const collectionDocData = collectionDocRef.data() as BaseCollection;
+        const userOwnedCollectionData: Omit<UserOwnedCollection, 'numCollectionNftsOwned'> = {
+          chainId: collectionDocData.chainId,
+          collectionAddress: collectionDocData.address,
+          collectionSlug: collectionDocData.slug,
+          collectionName: collectionDocData.metadata?.name ?? '',
+          collectionDescription: collectionDocData.metadata?.description ?? '',
+          collectionSymbol: collectionDocData.metadata?.symbol ?? '',
+          collectionProfileImage: collectionDocData.metadata?.profileImage ?? '',
+          collectionBannerImage: collectionDocData.metadata?.bannerImage ?? '',
+          displayType: collectionDocData.metadata?.displayType ?? '',
+          hasBlueCheck: collectionDocData.hasBlueCheck,
+          tokenStandard
+        };
+        batch.set(toUserCollectionDocRef, userOwnedCollectionData, { merge: true });
+        batch.set(
+          toUserCollectionDocRef,
+          { numCollectionNftsOwned: firestore.FieldValue.increment(1) },
+          { merge: true }
+        );
+
+        // add the tokenDoc
+        const tokenDataDoc = await collectionNftDocRef.get();
+        if (tokenDataDoc.exists && tokenDataDoc.data()) {
+          const tokenData = tokenDataDoc.data() as BaseToken;
+          const data: UserOwnedToken = {
+            ...userOwnedCollectionData,
+            ...tokenData
+          };
+          batch.set(toUserTokenDocRef, data, { merge: true });
+        } else {
+          // fetch token data from Zora
+          const zoraTokenData = await fetchTokenFromZora(chainId, collectionAddress, tokenId);
+          // fetch token data from Alchemy for its cached image and as a possible backup
+          const alchemyData = await fetchTokenFromAlchemy(chainId, collectionAddress, tokenId);
+
+          if (zoraTokenData?.data?.token?.token) {
+            const transformedData = transformZoraTokenData(zoraTokenData.data.token.token);
+            const userAssetData = {
+              ...userOwnedCollectionData,
+              ...transformedData,
+              alchemyCachedImage: alchemyData?.media?.[0]?.gateway
+            };
+            batch.set(toUserTokenDocRef, userAssetData, { merge: true });
+          } else if (alchemyData) {
+            const transformedData = transformAlchemyTokenData(alchemyData);
+            const userAssetData = {
+              ...userOwnedCollectionData,
+              ...transformedData
+            };
+            batch.set(toUserTokenDocRef, userAssetData, { merge: true });
+          } else {
+            console.log('Neither Zora or Alchemy has data for', chainId, collectionAddress, tokenId);
+          }
+        }
+      } else {
+        console.log('Transfer Handler: Collection doc does not exist (not indexed)', collectionDocId);
+      }
+    } else {
+      console.log('Transfer Handler: To user token doc already exists', toAddress, collectionAddress, tokenId);
+    }
+  }
+}
+
+function updatePixelScoreDb(owner: string, chainId: string, collectionAddress: string, tokenId: string) {
+  const docId = getDocIdHash({ chainId, collectionAddress, tokenId });
+  pixelScoreDb
+    .doc(`${PIXELSCORE_DB_RANKINGS_COLL}/${docId}`)
+    .set({ owner }, { merge: true })
+    .catch((err) => {
+      console.log('Error updating ownership info in pixelscore db', err);
     });
 }
 
