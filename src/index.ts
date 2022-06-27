@@ -1,6 +1,6 @@
 import { server } from 'server';
 import * as Emittery from 'emittery';
-import { transferHandler, updateOrdersHandler, updateOwnershipHandler } from 'transfer-handlers';
+import { feedHandler, transferHandler, updateOrdersHandler, updateOwnershipHandler } from 'transfer-handlers';
 import { TransferEvent, TransferEmitter, Transfer } from 'types/transfer';
 import { HookdeckService } from 'hookdeck/hookdeck.service';
 import * as chalk from 'chalk';
@@ -18,7 +18,7 @@ async function main(): Promise<void> {
   const transferEmitter = new Emittery<TransferEvent>();
   const initTransferListener: (emitter: TransferEmitter, transferEndpoint: URL) => Promise<void> = server;
 
-  transferHandler(transferEmitter, [log, updateOrdersHandler, updateOwnershipHandler]);
+  transferHandler(transferEmitter, [log, updateOrdersHandler, updateOwnershipHandler, feedHandler]);
 
   await initTransferListener(transferEmitter, transferEndpoint);
 
