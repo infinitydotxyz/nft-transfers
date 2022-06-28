@@ -203,13 +203,18 @@ export async function writeTransferToFeed(transfer: Transfer): Promise<void> {
     const collectionName = nft?.collectionName;
     const nftName = nft?.metadata?.name ?? nft?.tokenId ?? '';
     const nftSlug = nft?.slug ?? '';
-    const image = nft?.image?.url ?? '';
+    const image =
+      nft?.image?.url ??
+      nft?.alchemyCachedImage ??
+      nft?.zoraImage?.mediaEncoding.preview ??
+      nft?.image?.originalUrl ??
+      '';
 
     if (!collectionSlug || !collectionName || !nftName || !image) {
       return;
     }
 
-    const nftTransferEvent: Omit<NftTransferEvent, 'collectionProfileImage'> = {
+    const nftTransferEvent: NftTransferEvent = {
       type: FeedEventType.NftTransfer,
       hasBlueCheck: nft?.hasBlueCheck ?? false,
       from,
