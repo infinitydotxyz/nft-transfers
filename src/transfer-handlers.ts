@@ -179,6 +179,7 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
 
 export async function writeTransferToFeed(transfer: Transfer): Promise<void> {
   try {
+    console.log(`Writing transfer to feed ${transfer.address} ${transfer.tokenId}`);
     const chainId = transfer.chainId;
     const feedRef = infinityDb.collection(firestoreConstants.FEED_COLL);
     const transferDocRef = feedRef.doc(transfer.txHash);
@@ -188,6 +189,12 @@ export async function writeTransferToFeed(transfer: Transfer): Promise<void> {
       .collection(firestoreConstants.COLLECTION_NFTS_COLL)
       .doc(transfer.tokenId)
       .get();
+    const collectionData = (
+      await infinityDb
+        .collection(firestoreConstants.COLLECTIONS_COLL)
+        .doc(getCollectionDocId({ collectionAddress: transfer.address, chainId }))
+        .get()
+    ).data() as BaseCollection;
 
     const from = transfer.from;
     const to = transfer.to;
@@ -199,18 +206,20 @@ export async function writeTransferToFeed(transfer: Transfer): Promise<void> {
 
     const nft: Partial<Token> | undefined = nftData as Partial<Token> | undefined;
 
-    const collectionSlug = nft?.collectionSlug;
-    const collectionName = nft?.collectionName;
-    const nftName = nft?.metadata?.name ?? nft?.tokenId ?? '';
-    const nftSlug = nft?.slug ?? '';
+    const collectionSlug = nft?.collectionSlug ?? collectionData.slug ?? '';
+    const collectionName = nft?.collectionName ?? collectionData.metadata.name ?? '';
+    const nftName = nft?.metadata?.name ?? nft?.tokenId ?? transfer.tokenId;
+    const nftSlug = nft?.slug ?? trimLowerCase(nftName);
     const image =
       nft?.image?.url ??
       nft?.alchemyCachedImage ??
-      nft?.zoraImage?.mediaEncoding.preview ??
+      nft?.zoraImage?.mediaEncoding?.preview ??
       nft?.image?.originalUrl ??
+      collectionData.metadata.profileImage ??
       '';
 
     if (!collectionSlug || !collectionName || !nftName || !image) {
+      console.log('Not writing transfer to feed as some data is empty', collectionSlug, collectionName, nftName, image);
       return;
     }
 
@@ -228,6 +237,7 @@ export async function writeTransferToFeed(transfer: Transfer): Promise<void> {
       collectionAddress: transfer.address,
       collectionName,
       collectionSlug,
+      collectionProfileImage: collectionData.metadata.profileImage,
       nftName,
       nftSlug,
       likes: 0,
@@ -244,7 +254,15 @@ export async function writeTransferToFeed(transfer: Transfer): Promise<void> {
       externalUrl: getEtherscanLink({ type: EtherscanLinkType.Transaction, transactionHash: transfer.txHash })
     };
 
-    await transferDocRef.set(nftTransferEvent);
+    transferDocRef
+      .set(nftTransferEvent)
+      .then(() => {
+        console.log(`Wrote transfer to feed ${transferDocRef.path}`);
+      })
+      .catch((err) => {
+        console.error(`Failed to write transfer to feed ${transfer.txHash}`);
+        console.error(err);
+      });
   } catch (err) {
     console.error('Error writng transfer to feed', err);
     return;
