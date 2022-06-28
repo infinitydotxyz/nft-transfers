@@ -179,7 +179,6 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
 
 export async function writeTransferToFeed(transfer: Transfer): Promise<void> {
   try {
-    console.log(`Writing transfer to feed ${transfer.address} ${transfer.tokenId}`);
     const chainId = transfer.chainId;
     const feedRef = infinityDb.collection(firestoreConstants.FEED_COLL);
     const transferDocRef = feedRef.doc(transfer.txHash);
@@ -206,20 +205,26 @@ export async function writeTransferToFeed(transfer: Transfer): Promise<void> {
 
     const nft: Partial<Token> | undefined = nftData as Partial<Token> | undefined;
 
-    const collectionSlug = nft?.collectionSlug ?? collectionData.slug ?? '';
-    const collectionName = nft?.collectionName ?? collectionData.metadata.name ?? '';
+    const collectionSlug = nft?.collectionSlug ?? collectionData?.slug ?? '';
+    const collectionName = nft?.collectionName ?? collectionData?.metadata?.name ?? '';
     const nftName = nft?.metadata?.name ?? nft?.tokenId ?? transfer.tokenId;
-    const nftSlug = nft?.slug ?? trimLowerCase(nftName);
+    const nftSlug = nft?.slug ?? trimLowerCase(nftName) ?? '';
     const image =
       nft?.image?.url ??
       nft?.alchemyCachedImage ??
       nft?.zoraImage?.mediaEncoding?.preview ??
       nft?.image?.originalUrl ??
-      collectionData.metadata.profileImage ??
+      collectionData?.metadata?.profileImage ??
       '';
 
     if (!collectionSlug || !collectionName || !nftName || !image) {
-      console.log('Not writing transfer to feed as some data is empty', collectionSlug, collectionName, nftName, image);
+      console.log(
+        `Not writing transfer to feed as some data is empty for ${transfer.address} ${transfer.tokenId}`,
+        collectionSlug,
+        collectionName,
+        nftName,
+        image
+      );
       return;
     }
 
