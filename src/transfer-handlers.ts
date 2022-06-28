@@ -29,7 +29,6 @@ import { infinityDb, pixelScoreDb } from 'firestore';
 import { Order } from 'models/order';
 import { OrderItem } from 'models/order-item';
 import { getDocIdHash, getProviderByChainId } from 'utils';
-import { fetchTokenFromZora } from 'zora';
 import { Transfer, TransferEmitter, TransferEventType } from './types/transfer';
 
 // these addresses are used to ignore 'to' ownership transfers
@@ -212,7 +211,7 @@ export async function writeTransferToFeed(transfer: Transfer): Promise<void> {
     const image =
       nft?.image?.url ??
       nft?.alchemyCachedImage ??
-      nft?.zoraImage?.mediaEncoding?.preview ??
+      nft?.zoraImage?.mediaEncoding?.thumbnail ??
       nft?.image?.originalUrl ??
       collectionData?.metadata?.profileImage ??
       '';
@@ -382,20 +381,22 @@ async function updateToUserDoc(
           };
           batch.set(toUserTokenDocRef, data, { merge: true });
         } else {
+          // commenting this out as we are seeing rate limits
           // fetch token data from Zora
-          const zoraTokenData = await fetchTokenFromZora(chainId, collectionAddress, tokenId);
+          // const zoraTokenData = await fetchTokenFromZora(chainId, collectionAddress, tokenId);
           // fetch token data from Alchemy for its cached image and as a possible backup
           const alchemyData = await fetchTokenFromAlchemy(chainId, collectionAddress, tokenId);
 
-          if (zoraTokenData?.data?.token?.token) {
-            const transformedData = transformZoraTokenData(zoraTokenData.data.token.token);
-            const userAssetData = {
-              ...userOwnedCollectionData,
-              ...transformedData,
-              alchemyCachedImage: alchemyData?.media?.[0]?.gateway
-            };
-            batch.set(toUserTokenDocRef, userAssetData, { merge: true });
-          } else if (alchemyData) {
+          // if (zoraTokenData?.data?.token?.token) {
+          //   const transformedData = transformZoraTokenData(zoraTokenData.data.token.token);
+          //   const userAssetData = {
+          //     ...userOwnedCollectionData,
+          //     ...transformedData,
+          //     alchemyCachedImage: alchemyData?.media?.[0]?.gateway
+          //   };
+          //   batch.set(toUserTokenDocRef, userAssetData, { merge: true });
+          // } else
+          if (alchemyData) {
             const transformedData = transformAlchemyTokenData(alchemyData);
             const userAssetData = {
               ...userOwnedCollectionData,
@@ -428,6 +429,7 @@ function updatePixelScoreDb(owner: string, chainId: string, collectionAddress: s
     });
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function transformZoraTokenData(fetchedTokenData: ZoraToken['token']): Partial<UserOwnedToken> {
   const transformedData: Partial<UserOwnedToken> = {
     tokenId: fetchedTokenData.tokenId,
