@@ -2,14 +2,25 @@ import {
   BaseCollection,
   BaseToken,
   ChainId,
+  EtherscanLinkType,
+  InfinityLinkType,
+  Token,
   TokenStandard,
   UserOwnedCollection,
   UserOwnedToken
 } from '@infinityxyz/lib/types/core';
+import { FeedEventType, NftTransferEvent } from '@infinityxyz/lib/types/core/feed';
 import { FirestoreOrder } from '@infinityxyz/lib/types/core/OBOrder';
 import { AlchemyNftWithMetadata } from '@infinityxyz/lib/types/services/alchemy';
 import { ZoraToken } from '@infinityxyz/lib/types/services/zora/tokens';
-import { getSearchFriendlyString, hexToDecimalTokenId, trimLowerCase } from '@infinityxyz/lib/utils';
+import {
+  getEtherscanLink,
+  getInfinityLink,
+  getSearchFriendlyString,
+  getUserDisplayName,
+  hexToDecimalTokenId,
+  trimLowerCase
+} from '@infinityxyz/lib/utils';
 import { firestoreConstants, NULL_ADDRESS } from '@infinityxyz/lib/utils/constants';
 import { getCollectionDocId } from '@infinityxyz/lib/utils/firestore';
 import { fetchTokenFromAlchemy } from 'alchemy';
@@ -17,7 +28,7 @@ import { firestore } from 'firebase-admin';
 import { infinityDb, pixelScoreDb } from 'firestore';
 import { Order } from 'models/order';
 import { OrderItem } from 'models/order-item';
-import { getDocIdHash } from 'utils';
+import { getDocIdHash, getProviderByChainId } from 'utils';
 import { fetchTokenFromZora } from 'zora';
 import { Transfer, TransferEmitter, TransferEventType } from './types/transfer';
 
@@ -53,6 +64,12 @@ export const updateOrdersHandler: TransferHandlerFn = {
 export const updateOwnershipHandler: TransferHandlerFn = {
   fn: updateOwnership,
   name: 'updateOwnership',
+  throwErrorOnFailure: true
+};
+
+export const feedHandler: TransferHandlerFn = {
+  fn: writeTransferToFeed,
+  name: 'writeTransferToFeed',
   throwErrorOnFailure: true
 };
 
@@ -158,6 +175,80 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
       console.error(`Failed to update ownership of ${chainId}:${collectionAddress}:${tokenId} to ${transfer.to}`);
       console.error(err);
     });
+}
+
+export async function writeTransferToFeed(transfer: Transfer): Promise<void> {
+  try {
+    const chainId = transfer.chainId;
+    const feedRef = infinityDb.collection(firestoreConstants.FEED_COLL);
+    const transferDocRef = feedRef.doc(transfer.txHash);
+    const nftData = await infinityDb
+      .collection(firestoreConstants.COLLECTIONS_COLL)
+      .doc(getCollectionDocId({ collectionAddress: transfer.address, chainId }))
+      .collection(firestoreConstants.COLLECTION_NFTS_COLL)
+      .doc(transfer.tokenId)
+      .get();
+
+    const from = transfer.from;
+    const to = transfer.to;
+    const provider = getProviderByChainId(chainId);
+    const [fromDisplayName, toDisplayName] = await Promise.all(
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      [from, to].map((item) => getUserDisplayName(item, chainId, provider as any))
+    );
+
+    const nft: Partial<Token> | undefined = nftData as Partial<Token> | undefined;
+
+    const collectionSlug = nft?.collectionSlug;
+    const collectionName = nft?.collectionName;
+    const nftName = nft?.metadata?.name ?? nft?.tokenId ?? '';
+    const nftSlug = nft?.slug ?? '';
+    const image =
+      nft?.image?.url ??
+      nft?.alchemyCachedImage ??
+      nft?.zoraImage?.mediaEncoding.preview ??
+      nft?.image?.originalUrl ??
+      '';
+
+    if (!collectionSlug || !collectionName || !nftName || !image) {
+      return;
+    }
+
+    const nftTransferEvent: NftTransferEvent = {
+      type: FeedEventType.NftTransfer,
+      hasBlueCheck: nft?.hasBlueCheck ?? false,
+      from,
+      to,
+      fromDisplayName,
+      toDisplayName,
+      tokenStandard: transfer.tokenStandard,
+      txHash: transfer.txHash,
+      quantity: 1, // default ERC721
+      chainId,
+      collectionAddress: transfer.address,
+      collectionName,
+      collectionSlug,
+      nftName,
+      nftSlug,
+      likes: 0,
+      comments: 0,
+      tokenId: transfer.tokenId,
+      image,
+      timestamp: transfer.timestamp,
+      internalUrl: getInfinityLink({
+        type: InfinityLinkType.Asset,
+        collectionAddress: transfer.address,
+        tokenId: transfer.tokenId,
+        chainId
+      }),
+      externalUrl: getEtherscanLink({ type: EtherscanLinkType.Transaction, transactionHash: transfer.txHash })
+    };
+
+    await transferDocRef.set(nftTransferEvent);
+  } catch (err) {
+    console.error('Error writng transfer to feed', err);
+    return;
+  }
 }
 
 async function updateFromUserDoc(
