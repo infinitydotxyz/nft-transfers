@@ -21,9 +21,10 @@ import {
   hexToDecimalTokenId,
   trimLowerCase
 } from '@infinityxyz/lib/utils';
-import { firestoreConstants, NULL_ADDRESS } from '@infinityxyz/lib/utils/constants';
+import { ETHEREUM_INFINITY_EXCHANGE_ADDRESS, firestoreConstants, NULL_ADDRESS } from '@infinityxyz/lib/utils/constants';
 import { getCollectionDocId } from '@infinityxyz/lib/utils/firestore';
 import { fetchTokenFromAlchemy } from 'alchemy';
+import { filterByContractAddress } from 'filter-by-contract-address';
 import { firestore } from 'firebase-admin';
 import { infinityDb, pixelScoreDb } from 'firestore';
 import { Order } from 'models/order';
@@ -72,20 +73,9 @@ export const feedHandler: TransferHandlerFn = {
   throwErrorOnFailure: true
 };
 
-export function transferHandler(
-  transferEmitter: TransferEmitter,
-  handlerFns: TransferHandlerFn[],
-  filters: ((transfer: Transfer) => Promise<boolean>)[]
-): void {
+export function transferHandler(transferEmitter: TransferEmitter, handlerFns: TransferHandlerFn[]): void {
   transferEmitter.on('transfer', async (transfer) => {
     try {
-      for (const filter of filters) {
-        const shouldHandle = await filter(transfer);
-        if (!shouldHandle) {
-          return;
-        }
-      }
-
       const results = await Promise.allSettled(
         handlerFns.map(({ fn }) => {
           return fn(transfer);
@@ -108,6 +98,16 @@ export function transferHandler(
 }
 
 export async function updateOrders(transfer: Transfer): Promise<void> {
+  const INFINITY_CONTRACT_ADDRESSES: string[] = [ETHEREUM_INFINITY_EXCHANGE_ADDRESS];
+  const addressesToExclude = INFINITY_CONTRACT_ADDRESSES.map((address) => trimLowerCase(address));
+  const filters = [filterByContractAddress({ blockList: new Set(addressesToExclude) })];
+  for (const filter of filters) {
+    const shouldHandle = await filter(transfer);
+    if (!shouldHandle) {
+      return;
+    }
+  }
+
   const standardizedTransfer =
     transfer.type === TransferEventType.Transfer
       ? transfer
