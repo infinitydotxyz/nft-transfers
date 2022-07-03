@@ -1,9 +1,6 @@
-import { ETHEREUM_INFINITY_EXCHANGE_ADDRESS } from '@infinityxyz/lib/utils';
-import { trimLowerCase } from '@infinityxyz/lib/utils/formatters';
 import * as chalk from 'chalk';
 import { hookdeckConfigs, transferEndpoint } from 'config';
 import * as Emittery from 'emittery';
-import { filterByContractAddress } from 'filter-by-contract-address';
 import { HookdeckService } from 'hookdeck/hookdeck.service';
 import { server } from 'server';
 import { feedHandler, transferHandler, updateOrdersHandler, updateOwnershipHandler } from 'transfer-handlers';
@@ -21,11 +18,7 @@ async function main(): Promise<void> {
   const transferEmitter = new Emittery<TransferEvent>();
   const initTransferListener: (emitter: TransferEmitter, transferEndpoint: URL) => Promise<void> = server;
 
-  const INFINITY_CONTRACT_ADDRESSES: string[] = [ETHEREUM_INFINITY_EXCHANGE_ADDRESS];
-  const addressesToExclude = INFINITY_CONTRACT_ADDRESSES.map((address) => trimLowerCase(address));
-
-  const filters = [filterByContractAddress({ blockList: new Set(addressesToExclude) })];
-  transferHandler(transferEmitter, [log, updateOrdersHandler, updateOwnershipHandler, feedHandler], filters);
+  transferHandler(transferEmitter, [log, updateOrdersHandler, updateOwnershipHandler, feedHandler]);
 
   await initTransferListener(transferEmitter, transferEndpoint);
 
