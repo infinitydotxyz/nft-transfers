@@ -1,6 +1,6 @@
 import { trimLowerCase } from '@infinityxyz/lib/utils';
 import { createHash } from 'crypto';
-import { JsonRpcProvider } from '@ethersproject/providers';
+import { StaticJsonRpcProvider } from '@ethersproject/providers';
 
 export const JSON_RPC_MAINNET_KEYS = (() => {
   const apiKeys = getMultipleEnvVariables('JSON_RPC_MAINNET');
@@ -71,10 +71,10 @@ export function getDocIdHash({
 }
 
 const mainnetProviders = JSON_RPC_MAINNET_KEYS.map((item) => {
-  return new JsonRpcProvider(item);
+  return new StaticJsonRpcProvider(item);
 });
 
-export function getProviderByChainId(chainId: string): JsonRpcProvider {
+export function getProviderByChainId(chainId: string): StaticJsonRpcProvider {
   let chainIdProviders;
   if (chainId === '1') {
     chainIdProviders = mainnetProviders;
