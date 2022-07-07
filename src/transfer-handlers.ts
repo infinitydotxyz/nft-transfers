@@ -222,7 +222,6 @@ export async function writeTransferToFeed(transfer: Transfer): Promise<void> {
     const image =
       nft?.image?.url ??
       nft?.alchemyCachedImage ??
-      nft?.zoraImage?.mediaEncoding?.thumbnail ??
       nft?.image?.originalUrl ??
       collectionData?.metadata?.profileImage ??
       '';
@@ -461,7 +460,6 @@ function transformZoraTokenData(fetchedTokenData: ZoraToken['token']): Partial<U
     zoraImage: fetchedTokenData.image,
     zoraContent: fetchedTokenData.content,
     image: {
-      url: fetchedTokenData.image?.mediaEncoding?.preview ?? fetchedTokenData.image?.mediaEncoding?.large,
       updatedAt: Date.now(),
       originalUrl: fetchedTokenData.image?.url
     },
