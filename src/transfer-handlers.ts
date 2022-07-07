@@ -9,7 +9,7 @@ import {
   UserOwnedCollection,
   UserOwnedToken
 } from '@infinityxyz/lib/types/core';
-import { FeedEventType, NftTransferEvent } from '@infinityxyz/lib/types/core/feed';
+import { EventType, NftTransferEvent } from '@infinityxyz/lib/types/core/feed';
 import { FirestoreOrder } from '@infinityxyz/lib/types/core/OBOrder';
 import { AlchemyNftWithMetadata } from '@infinityxyz/lib/types/services/alchemy';
 import { ZoraToken } from '@infinityxyz/lib/types/services/zora/tokens';
@@ -222,7 +222,6 @@ export async function writeTransferToFeed(transfer: Transfer): Promise<void> {
     const image =
       nft?.image?.url ??
       nft?.alchemyCachedImage ??
-      nft?.zoraImage?.mediaEncoding?.thumbnail ??
       nft?.image?.originalUrl ??
       collectionData?.metadata?.profileImage ??
       '';
@@ -239,7 +238,7 @@ export async function writeTransferToFeed(transfer: Transfer): Promise<void> {
     }
 
     const nftTransferEvent: NftTransferEvent = {
-      type: FeedEventType.NftTransfer,
+      type: EventType.NftTransfer,
       hasBlueCheck: nft?.hasBlueCheck ?? false,
       from,
       to,
@@ -461,7 +460,6 @@ function transformZoraTokenData(fetchedTokenData: ZoraToken['token']): Partial<U
     zoraImage: fetchedTokenData.image,
     zoraContent: fetchedTokenData.content,
     image: {
-      url: fetchedTokenData.image?.mediaEncoding?.preview ?? fetchedTokenData.image?.mediaEncoding?.large,
       updatedAt: Date.now(),
       originalUrl: fetchedTokenData.image?.url
     },
