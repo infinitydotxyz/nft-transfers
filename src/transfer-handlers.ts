@@ -414,7 +414,7 @@ async function updateToUserDoc(
             };
             batch.set(toUserTokenDocRef, userAssetData, { merge: true });
           } else {
-            console.log('Neither Zora or Alchemy has data for', chainId, collectionAddress, tokenId);
+            console.log('Alchemy has no data for', chainId, collectionAddress, tokenId);
           }
         }
       } else {

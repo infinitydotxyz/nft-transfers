@@ -1,10 +1,11 @@
-import * as chalk from 'chalk';
-import { hookdeckConfigs, transferEndpoint } from 'config';
+import { createAlchemyWeb3 } from '@alch/alchemy-web3';
 import * as Emittery from 'emittery';
-import { HookdeckService } from 'hookdeck/hookdeck.service';
-import { server } from 'server';
+import { erc721TransferLogAdapter } from 'transfer-adapter';
 import { feedHandler, transferHandler, updateOrdersHandler, updateOwnershipHandler } from 'transfer-handlers';
-import { Transfer, TransferEmitter, TransferEvent } from 'types/transfer';
+import { Transfer, TransferEvent, TransferEventType, TransferLog } from 'types/transfer';
+
+// Using WebSockets
+const web3 = createAlchemyWeb3(`wss://eth-mainnet.ws.alchemyapi.io/ws/${process.env.ALCHEMY_API_KEY}`);
 
 const log = {
   fn: (transfer: Transfer) => {
@@ -14,22 +15,34 @@ const log = {
   throwErrorOnFailure: false
 };
 
-async function main(): Promise<void> {
-  const transferEmitter = new Emittery<TransferEvent>();
-  const initTransferListener: (emitter: TransferEmitter, transferEndpoint: URL) => Promise<void> = server;
+const transferEmitter = new Emittery<TransferEvent>();
 
+function main() {
+  initTransferListener();
   transferHandler(transferEmitter, [log, updateOrdersHandler, updateOwnershipHandler, feedHandler]);
+}
 
-  await initTransferListener(transferEmitter, transferEndpoint);
+function initTransferListener() {
+  // also matches ERC20 transfer topic but the third indexed topic log won't be empty for ERC721s
+  const transferTopic = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+  // filters on all transfer logs
+  const transferFilter = { topics: [transferTopic] };
+  // init subscription
+  web3.eth.subscribe('logs', transferFilter).on('data', handleTransferLog);
+}
 
-  for (const hookdeckConfig of hookdeckConfigs) {
-    const hookdeck = new HookdeckService(hookdeckConfig);
-    const { connected, isPaused } = await hookdeck.connect();
-    if (!connected) {
-      throw new Error('Could not connect to hookdeck');
-    }
-    if (isPaused) {
-      console.log(chalk.red('Hookdeck connection is paused'));
+function handleTransferLog(data: any) {
+  const transferLog = data as TransferLog;
+  const isERC721Transfer = transferLog.topics.length === 4 && transferLog.topics[3];
+  if (isERC721Transfer) {
+    const transferEventType = transferLog.removed ? TransferEventType.RevertTransfer : TransferEventType.Transfer;
+    try {
+      const transfer = erc721TransferLogAdapter(transferLog, transferEventType);
+      transferEmitter.emit('transfer', transfer).catch((err: any) => {
+        console.error(err);
+      });
+    } catch (err) {
+      console.error(err);
     }
   }
 }
