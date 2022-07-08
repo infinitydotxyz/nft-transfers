@@ -36,3 +36,16 @@ export type TransferEvent = {
 };
 
 export type TransferEmitter = Emittery<TransferEvent>;
+
+export interface TransferLog {
+  address: string;
+  topics: string[];
+  data: string;
+  blockNumber: number;
+  transactionHash: string;
+  transactionIndex: number;
+  blockHash: string;
+  logIndex: number;
+  removed: boolean; // in case of reorgs this is true, else false
+  id: string;
+}
