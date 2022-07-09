@@ -40,7 +40,7 @@
   },
   "dependencies": {
     "@alch/alchemy-web3": "^1.4.4",
-    "@infinityxyz/lib": "^1.126.1",
+    "@infinityxyz/lib": "^1.127.5",
     "chalk": "^4.1.2",
     "dotenv": "^16.0.0",
     "emittery": "^0.10.2",
