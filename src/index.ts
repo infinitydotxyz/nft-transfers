@@ -1,11 +1,14 @@
 import { createAlchemyWeb3 } from '@alch/alchemy-web3';
-import * as Emittery from 'emittery';
+import Emittery from 'emittery';
 import { erc721TransferLogAdapter } from 'transfer-adapter';
 import { feedHandler, transferHandler, updateOrdersHandler, updateOwnershipHandler } from 'transfer-handlers';
 import { Transfer, TransferEvent, TransferEventType, TransferLog } from 'types/transfer';
+import Web3 from 'web3';
 
 // Using WebSockets
-const web3 = createAlchemyWeb3(`wss://eth-mainnet.ws.alchemyapi.io/ws/${process.env.ALCHEMY_API_KEY}`);
+const alchemyWeb3 = createAlchemyWeb3(`wss://eth-mainnet.ws.alchemyapi.io/ws/${process.env.ALCHEMY_API_KEY}`);
+const quickNodeWeb3 = new Web3(`wss://dark-frosty-dawn.quiknode.pro/${process.env.QUICK_NODE_KEY}/`);
+const useAlchemyWeb3 = process.env.USE_ALCHEMY_WEB3 === 'true';
 
 const log = {
   fn: (transfer: Transfer) => {
@@ -28,7 +31,17 @@ function initTransferListener() {
   // filters on all transfer logs
   const transferFilter = { topics: [transferTopic] };
   // init subscription
-  web3.eth.subscribe('logs', transferFilter).on('data', handleTransferLog);
+  if (useAlchemyWeb3) {
+    console.log(
+      '============================================ Using Alchemy Web3 ==============================================='
+    );
+    alchemyWeb3.eth.subscribe('logs', transferFilter).on('data', handleTransferLog);
+  } else {
+    console.log(
+      '============================================ Using Quick Node Web3 ==============================================='
+    );
+    quickNodeWeb3.eth.subscribe('logs', transferFilter).on('data', handleTransferLog);
+  }
 }
 
 function handleTransferLog(data: any) {
