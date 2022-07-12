@@ -406,10 +406,10 @@ export async function writeTransferToFeed(transfer: Transfer): Promise<void> {
     const nftName = nft?.metadata?.name ?? nft?.tokenId ?? transfer.tokenId;
     const nftSlug = nft?.slug ?? trimLowerCase(nftName) ?? '';
     const image =
-      nft?.image?.url ??
-      nft?.alchemyCachedImage ??
-      nft?.image?.originalUrl ??
-      collectionData?.metadata?.profileImage ??
+      nft?.image?.url ||
+      nft?.alchemyCachedImage ||
+      nft?.image?.originalUrl ||
+      collectionData?.metadata?.profileImage ||
       '';
 
     if (!collectionSlug || !collectionName || !nftName || !image) {
@@ -490,8 +490,7 @@ function transformZoraTokenData(fetchedTokenData: ZoraToken['token']): Partial<U
     zoraImage: fetchedTokenData.image,
     zoraContent: fetchedTokenData.content,
     image: {
-      updatedAt: Date.now(),
-      originalUrl: fetchedTokenData.image?.url
+      updatedAt: Date.now()
     },
     tokenUri: fetchedTokenData.tokenUrl,
     updatedAt: Date.now()
