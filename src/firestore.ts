@@ -1,15 +1,17 @@
 import { firestoreConstants } from '@infinityxyz/lib/utils/constants';
 import fbAdmin from 'firebase-admin';
 
-import * as pixelScoreServiceAccount from './creds/pixelscore-firebase.json';
 import * as infinityServiceAccount from './creds/nftc-infinity-firebase.json';
+import * as pixelScoreServiceAccount from './creds/pixelscore-firebase.json';
 
-export const fsAdminPixelScore = fbAdmin.initializeApp(
-  {
-    credential: fbAdmin.credential.cert(pixelScoreServiceAccount as fbAdmin.ServiceAccount)
-  },
-  'pixelscore'
-);
+export const fsAdminPixelScore = (pixelScoreServiceAccount as any)?.project_id
+  ? fbAdmin.initializeApp(
+      {
+        credential: fbAdmin.credential.cert(pixelScoreServiceAccount as fbAdmin.ServiceAccount)
+      },
+      'pixelscore'
+    )
+  : undefined;
 
 export const fsAdminInfinity = fbAdmin.initializeApp(
   {
@@ -18,8 +20,12 @@ export const fsAdminInfinity = fbAdmin.initializeApp(
   'infinity'
 );
 
-export const pixelScoreDb = fsAdminPixelScore.firestore();
-pixelScoreDb.settings({ ignoreUndefinedProperties: true });
+export const pixelScoreDb = fsAdminPixelScore ? fsAdminPixelScore.firestore() : undefined;
+pixelScoreDb?.settings?.({ ignoreUndefinedProperties: true });
+
+if (!pixelScoreDb) {
+  console.log(`\nPixelScore Firestore not initialized\n`);
+}
 
 export const infinityDb = fsAdminInfinity.firestore();
 infinityDb.settings({ ignoreUndefinedProperties: true });

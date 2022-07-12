@@ -173,7 +173,7 @@ export async function updateOwnership(transfer: Transfer): Promise<void> {
   // update toUser
   await updateToUserDoc(toAddress, chainId, collectionAddress, tokenId, tokenStandard, batch);
 
-  // updare pixelScoreDb
+  // update pixelScoreDb
   updatePixelScoreDb(toAddress, chainId, collectionAddress, tokenId);
 
   batch
@@ -428,15 +428,17 @@ async function updateToUserDoc(
 
 function updatePixelScoreDb(owner: string, chainId: string, collectionAddress: string, tokenId: string) {
   const docId = getDocIdHash({ chainId, collectionAddress, tokenId });
-  pixelScoreDb
-    .doc(`${PIXELSCORE_DB_RANKINGS_COLL}/${docId}`)
-    .set({ owner }, { merge: true })
-    .then(() => {
-      console.log('=================== PixelScore DB updated for =======================', docId);
-    })
-    .catch((err) => {
-      console.log('Error updating ownership info in pixelscore db', err);
-    });
+  if (pixelScoreDb) {
+    pixelScoreDb
+      .doc(`${PIXELSCORE_DB_RANKINGS_COLL}/${docId}`)
+      .set({ owner }, { merge: true })
+      .then(() => {
+        console.log('=================== PixelScore DB updated for =======================', docId);
+      })
+      .catch((err) => {
+        console.log('Error updating ownership info in pixelscore db', err);
+      });
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
