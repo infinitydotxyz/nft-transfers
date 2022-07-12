@@ -2,6 +2,9 @@ import { trimLowerCase } from '@infinityxyz/lib/utils';
 import { createHash } from 'crypto';
 import { StaticJsonRpcProvider } from '@ethersproject/providers';
 
+export const COLLECTION_INDEXING_SERVICE_URL =
+  'https://nft-collection-service-dot-nftc-dev.ue.r.appspot.com/collection';
+
 export const JSON_RPC_MAINNET_KEYS = (() => {
   const apiKeys = getMultipleEnvVariables('JSON_RPC_MAINNET');
   return apiKeys;
