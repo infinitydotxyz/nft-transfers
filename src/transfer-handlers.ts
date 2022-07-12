@@ -472,6 +472,12 @@ function transformZoraTokenData(fetchedTokenData: ZoraToken['token']): Partial<U
 }
 
 function transformAlchemyTokenData(fetchedTokenData: AlchemyNftWithMetadata): Partial<UserOwnedToken> {
+  const cachedImage = fetchedTokenData?.media?.[0]?.gateway;
+  let alchemyCachedImage = '';
+  if (cachedImage && cachedImage.includes('cloudinary')) {
+    alchemyCachedImage = cachedImage;
+  }
+
   const transformedData: Partial<UserOwnedToken> = {
     tokenId: hexToDecimalTokenId(fetchedTokenData.id.tokenId),
     slug: getSearchFriendlyString(fetchedTokenData.title ?? fetchedTokenData.metadata.name),
@@ -483,14 +489,17 @@ function transformAlchemyTokenData(fetchedTokenData: AlchemyNftWithMetadata): Pa
     },
     tokenStandard: TokenStandard.ERC721,
     numTraitTypes: fetchedTokenData.metadata?.attributes?.length,
-    alchemyCachedImage: fetchedTokenData.media?.[0]?.gateway,
     image: {
-      url: fetchedTokenData.media?.[0]?.gateway ?? fetchedTokenData.media?.[0]?.raw,
       updatedAt: Date.now(),
       originalUrl: fetchedTokenData.media?.[0]?.raw ?? fetchedTokenData.metadata?.image
     },
     tokenUri: fetchedTokenData.tokenUri?.gateway ?? fetchedTokenData.tokenUri?.raw,
     updatedAt: Date.now()
   };
+
+  if (alchemyCachedImage) {
+    transformedData.alchemyCachedImage = alchemyCachedImage;
+  }
+
   return transformedData;
 }
