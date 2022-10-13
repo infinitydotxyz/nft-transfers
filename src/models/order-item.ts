@@ -139,7 +139,8 @@ export class OrderItem {
     let isValidActive: boolean;
     if (this.type === OrderType.Offer) {
       const takerIsCurrentOwner = this.orderItem.takerAddress === this.currentOwner;
-      isValidActive = takerIsCurrentOwner && currentOwnerOwnsEnoughTokens;
+      const makerIsTaker = this.orderItem.makerAddress === this.orderItem.takerAddress;
+      isValidActive = takerIsCurrentOwner && currentOwnerOwnsEnoughTokens && !makerIsTaker;
     } else {
       const makerIsCurrentOwner = this.orderItem.makerAddress === this.currentOwner;
       isValidActive = makerIsCurrentOwner && currentOwnerOwnsEnoughTokens;
