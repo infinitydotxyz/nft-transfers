@@ -4,6 +4,7 @@ import { getUsername, infinityDb } from 'firestore';
 import { Transfer } from 'types/transfer';
 import { OrderType } from './order.types';
 import { FirestoreOrderItem, OBOrderStatus } from '@infinityxyz/lib/types/core/OBOrder';
+import FirestoreBatchHandler from 'batch-handler';
 
 export class OrderItem {
   static readonly OWNER_INHERITS_OFFERS = true;
@@ -47,12 +48,28 @@ export class OrderItem {
     return this.orderItem.orderStatus;
   }
 
+  set orderStatus(orderStatus: OBOrderStatus) {
+    this.orderItem.orderStatus = orderStatus;
+  }
+
   get type(): OrderType {
     return this.orderItem.isSellOrder ? OrderType.Listing : OrderType.Offer;
   }
 
   get taker(): string {
     return this.orderItem.takerAddress;
+  }
+
+  get owner() {
+    return this.currentOwner;
+  }
+
+  get token() {
+    return {
+      chainId: this.orderItem.chainId,
+      address: this.orderItem.collectionAddress,
+      tokenId: this.orderItem.tokenId
+    };
   }
 
   transferMatches(transfer: Transfer): boolean {
@@ -91,25 +108,33 @@ export class OrderItem {
       return this.orderItem;
     }
 
-    if (this.type === OrderType.Offer && OrderItem.OWNER_INHERITS_OFFERS) {
-      this.orderItem.takerAddress = transfer.to;
-      const takerUsername = await getUsername(transfer.to);
-      this.orderItem.takerUsername = takerUsername;
-    }
-    this.currentOwner = transfer.to;
-
-    const orderStatus = await this.getOrderStatus();
-    this.orderItem.orderStatus = orderStatus;
-
+    await this.updateOwner(transfer.to);
     return this.orderItem;
   }
 
-  save(): Promise<FirebaseFirestore.WriteResult> {
-    return this.ref.update(this.orderItem);
+  async updateOwner(newOwner: string) {
+    if (this.type === OrderType.Offer && OrderItem.OWNER_INHERITS_OFFERS) {
+      this.orderItem.takerAddress = newOwner;
+      const takerUsername = await getUsername(newOwner);
+      this.orderItem.takerUsername = takerUsername;
+    }
+    this.currentOwner = newOwner;
+
+    const orderStatus = await this.getOrderStatus();
+    this.orderItem.orderStatus = orderStatus;
   }
 
-  saveViaBatch(batch: FirebaseFirestore.WriteBatch): void {
-    batch.update(this.ref, this.orderItem);
+  async save(batchHandler?: FirestoreBatchHandler): Promise<void> {
+    if (batchHandler) {
+      return await batchHandler.addAsync(this.ref, this.orderItem, { merge: true });
+    }
+    await this.ref.set(this.orderItem, { merge: true });
+    return;
+  }
+
+  async updateStatus() {
+    const orderStatus = await this.getOrderStatus();
+    this.orderItem.orderStatus = orderStatus;
   }
 
   private get _ownerFromOrder(): string {
@@ -131,6 +156,7 @@ export class OrderItem {
 
   private async getOrderStatus(): Promise<OBOrderStatus> {
     if (!this._isLive) {
+      console.log(`Order ${this.ref.id} is not live`);
       return OBOrderStatus.Invalid;
     }
 
@@ -140,10 +166,33 @@ export class OrderItem {
     if (this.type === OrderType.Offer) {
       const takerIsCurrentOwner = this.orderItem.takerAddress === this.currentOwner;
       const makerIsTaker = this.orderItem.makerAddress === this.orderItem.takerAddress;
+      if (!takerIsCurrentOwner) {
+        console.log(`OFFER Taker is not current owner`);
+      }
+      if (!currentOwnerOwnsEnoughTokens) {
+        console.log(`OFFER Current owner does not own enough tokens`);
+      }
+      if (makerIsTaker) {
+        console.log(`OFFER Maker is taker`);
+      }
       isValidActive = takerIsCurrentOwner && currentOwnerOwnsEnoughTokens && !makerIsTaker;
+      if (isValidActive) {
+        console.log(
+          `OFFER taker: ${this.orderItem.takerAddress} is current owner: ${this.currentOwner} and is not also the maker ${this.orderItem.makerAddress}`
+        );
+      }
     } else {
       const makerIsCurrentOwner = this.orderItem.makerAddress === this.currentOwner;
+      if (!makerIsCurrentOwner) {
+        console.log(`LISTING Maker is not current owner`);
+      }
+      if (!currentOwnerOwnsEnoughTokens) {
+        console.log(`LISTING Current owner does not own enough tokens`);
+      }
       isValidActive = makerIsCurrentOwner && currentOwnerOwnsEnoughTokens;
+      if (isValidActive) {
+        console.log(`LISTING maker ${this.orderItem.makerAddress} is current owner ${this.currentOwner}`);
+      }
     }
 
     return isValidActive ? OBOrderStatus.ValidActive : OBOrderStatus.ValidInactive;

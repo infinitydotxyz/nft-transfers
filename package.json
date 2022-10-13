@@ -18,10 +18,12 @@
     "script": "cross-env NODE_PATH=./src ts-node-dev -r dotenv/config ./src/scripts/createOrder.ts",
     "deploy:dev": "npm run build && gcloud app deploy -q --appyaml=./app.yaml --project=nftc-dev",
     "deploy:prod": "npm run build && gcloud app deploy -q --appyaml=./app.yaml --project=nftc-infinity",
-    "pre:push": "npm run format && npm run lint && npm run build"
+    "pre:push": "npm run format && npm run lint && npm run build",
+    "verify-orders": "cross-env HOST=localhost cross-env NODE_PATH=./src ts-node-dev -r dotenv/config ./src/verify-orders.ts"
   },
   "devDependencies": {
     "@types/express": "^4.17.13",
+    "@types/multer": "^1.4.7",
     "@typescript-eslint/eslint-plugin": "^5.20.0",
     "@typescript-eslint/parser": "^5.20.0",
     "cross-env": "^7.0.3",
@@ -40,7 +42,8 @@
   },
   "dependencies": {
     "@alch/alchemy-web3": "^1.4.4",
-    "@infinityxyz/lib": "^1.131.7",
+    "@infinityxyz/lib": "^1.239.1",
+    "axios": "^1.1.2",
     "chalk": "^4.1.2",
     "dotenv": "^16.0.0",
     "emittery": "^0.10.2",

@@ -1,5 +1,6 @@
 import { FirestoreOrder, FirestoreOrderItem, OBOrderStatus } from '@infinityxyz/lib/types/core/OBOrder';
 import { firestoreConstants } from '@infinityxyz/lib/utils/constants';
+import FirestoreBatchHandler from 'batch-handler';
 import { infinityDb } from 'firestore';
 import { Transfer } from 'types/transfer';
 import { OrderItem } from './order-item';
@@ -21,28 +22,82 @@ export class Order {
   }
 
   // TODO what is profile image? does it need to be updated when user address is updated?
-  public async handleTransfer(transfer: Transfer): Promise<FirestoreOrder> {
+  public async handleTransfer(transfer: Transfer, db: FirebaseFirestore.Firestore): Promise<FirestoreOrder> {
+    const batch = new FirestoreBatchHandler(db);
     const orderItems = await this.getOrderItems();
     for (const orderItem of orderItems) {
       const matchesTransfer = orderItem.transferMatches(transfer);
       if (matchesTransfer) {
         await orderItem.transfer(transfer);
-        await orderItem.save();
+        await orderItem.save(batch);
       }
     }
 
+    await batch.flush();
     const { orderStatus: updatedOrderStatus } = this.getOrderStatus(orderItems);
 
-    let requiresUpdate = false;
     if (updatedOrderStatus !== this.order.orderStatus) {
       this.order.orderStatus = updatedOrderStatus;
-      requiresUpdate = true;
+    }
+    await this.setOrderStatus(updatedOrderStatus, orderItems, batch);
+
+    await batch.flush();
+    return this.order;
+  }
+
+  async setOrderStatus(
+    orderStatus: OBOrderStatus,
+    orderItems: OrderItem[],
+    batch?: FirestoreBatchHandler
+  ): Promise<void> {
+    for (const orderItem of orderItems) {
+      if (orderItem.orderStatus !== orderStatus) {
+        orderItem.orderStatus = orderStatus;
+        await orderItem.save(batch);
+      }
+    }
+    if (this.order.orderStatus !== orderStatus) {
+      this.order.orderStatus = orderStatus;
+      console.log(`Order status for ${this.order.id} changed from ${this.order.orderStatus} to ${orderStatus}`);
+      await this.save(batch);
     }
 
-    if (requiresUpdate) {
-      await this.save();
+    if (batch) {
+      await batch.flush();
     }
-    return this.order;
+  }
+
+  public async updateStatus(
+    db: FirebaseFirestore.Firestore,
+    getOwner: (chainId: string, address: string, tokenId: string) => Promise<string>
+  ): Promise<void> {
+    const batch = new FirestoreBatchHandler(db);
+    const orderItems = await this.getOrderItems();
+    for (const orderItem of orderItems) {
+      const originalStatus = orderItem.orderStatus;
+      const token = orderItem.token;
+      const isCollectionOrder = token.tokenId === '';
+      if (!isCollectionOrder) {
+        let ownerChanged = false;
+        const owner = await getOwner(token.chainId, token.address, token.tokenId);
+        if (owner !== orderItem.owner) {
+          console.log(`Order Item owner changed from ${orderItem.owner} to ${owner}. Updating...`);
+          await orderItem.updateOwner(owner);
+          ownerChanged = true;
+        }
+        await orderItem.updateStatus();
+        if (ownerChanged || orderItem.orderStatus !== originalStatus) {
+          console.log(`Order item status changed from ${originalStatus} to ${orderItem.orderStatus}`);
+          await orderItem.save(batch);
+        }
+      }
+    }
+    await batch.flush();
+
+    const { orderStatus: updatedOrderStatus } = this.getOrderStatus(orderItems);
+
+    await this.setOrderStatus(updatedOrderStatus, orderItems, batch);
+    await batch.flush();
   }
 
   private getOrderStatus(orderItems: OrderItem[]): { orderStatus: OBOrderStatus } {
@@ -66,8 +121,12 @@ export class Order {
     return { orderStatus: status };
   }
 
-  private async save(): Promise<FirebaseFirestore.WriteResult> {
-    return await this.ref.update(this.order);
+  private async save(batchHandler?: FirestoreBatchHandler): Promise<void> {
+    if (batchHandler) {
+      return await batchHandler.addAsync(this.ref, this.order, { merge: true });
+    }
+    await this.ref.set(this.order, { merge: true });
+    return;
   }
 
   private async getOrderItems(): Promise<OrderItem[]> {
