@@ -150,7 +150,7 @@ export async function updateOrders(transfer: Transfer): Promise<void> {
   console.log(`Found: ${orders.length} orders to update`);
 
   for (const order of orders) {
-    await order.handleTransfer(standardizedTransfer);
+    await order.handleTransfer(standardizedTransfer, infinityDb);
   }
 }
 

@@ -4,6 +4,8 @@ import { erc721TransferLogAdapter } from 'transfer-adapter';
 import { feedHandler, transferHandler, updateOrdersHandler, updateOwnershipHandler } from 'transfer-handlers';
 import { Transfer, TransferEvent, TransferEventType, TransferLog } from 'types/transfer';
 import Web3 from 'web3';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { Multer } from 'multer';
 
 // Using WebSockets
 const alchemyWeb3 = createAlchemyWeb3(`wss://eth-mainnet.ws.alchemyapi.io/ws/${process.env.ALCHEMY_API_KEY}`);
