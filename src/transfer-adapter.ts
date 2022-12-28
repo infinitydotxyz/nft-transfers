@@ -1,5 +1,6 @@
-import { ChainId, TokenStandard } from '@infinityxyz/lib/types/core';
+import { TokenStandard } from '@infinityxyz/lib/types/core';
 import { trimLowerCase } from '@infinityxyz/lib/utils/formatters';
+import { config } from 'config';
 import { BigNumber, ethers } from 'ethers';
 import { TransferEventType, Transfer, TransferLog } from 'types/transfer';
 
@@ -14,14 +15,20 @@ export function erc721TransferLogAdapter(transfer: TransferLog, type: TransferEv
 
   return {
     txHash: transfer.transactionHash,
+    blockHash: transfer.blockHash,
     from,
     to,
     address: tokenAddress,
-    chainId: ChainId.Mainnet, // TODO support other chains
+    chainId: config.eth.chainId,
     tokenId,
     blockNumber: transfer.blockNumber,
     timestamp: Date.now(),
     type,
-    tokenStandard: TokenStandard.ERC721
+    tokenStandard: TokenStandard.ERC721,
+    logIndex: transfer.logIndex,
+    transactionIndex: transfer.transactionIndex,
+    removed: transfer.removed,
+    topics: transfer.topics,
+    data: transfer.data
   };
 }

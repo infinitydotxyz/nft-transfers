@@ -55,6 +55,18 @@ interface StreamQueryWithRefOptions<
   transformItem?: (pageItem?: TransformedPage) => Promise<TransformedItem> | TransformedItem;
 }
 
+interface StreamQueryWithRefOptions<
+  DocumentData,
+  TransformedPage = { data: DocumentData; ref: FirebaseFirestore.DocumentReference<DocumentData> },
+  TransformedItem = TransformedPage
+> {
+  pageSize: number;
+  transformPage?: (
+    docs: { data: DocumentData; ref: FirebaseFirestore.DocumentReference<DocumentData> }[]
+  ) => Promise<TransformedPage[]> | TransformedPage[];
+  transformItem?: (pageItem?: TransformedPage) => Promise<TransformedItem> | TransformedItem;
+}
+
 export async function* streamQueryWithRef<
   DocumentData,
   TransformedPage = { data: DocumentData; ref: FirebaseFirestore.DocumentReference<DocumentData> },
