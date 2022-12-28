@@ -41,17 +41,11 @@
     "src/**/*": "prettier --write --ignore-unknown"
   },
   "dependencies": {
-    "@alch/alchemy-web3": "^1.4.7",
     "@infinityxyz/lib": "^1.275.0",
-    "axios": "^1.1.2",
-    "chalk": "^4.1.2",
     "dotenv": "^16.0.0",
-    "emittery": "^0.10.2",
     "ethers": "^5.7.2",
     "express": "^4.17.3",
     "firebase-admin": "^10.0.2",
-    "graphql-request": "^4.3.0",
-    "p-queue": "^6.6.2",
-    "quick-lru": "^5.1.1"
+    "p-queue": "^6.6.2"
   }
 }
