@@ -117,7 +117,7 @@ export class Sync {
     toLatestBlock: number,
     toFinalizedBlock: number
   ) {
-    const queue = new PQueue({ concurrency: 10 });
+    const queue = new PQueue({ concurrency: 20 });
 
     let successful = true;
 
@@ -135,12 +135,14 @@ export class Sync {
             console.error(err);
           });
       }
+      await queue.onIdle();
       console.log(`Synced blocks from ${fromFinalizedBlock} to ${toFinalizedBlock} (finalized)`);
     }
 
-    if (fromLatestBlock <= toLatestBlock) {
-      console.log(`Syncing blocks from ${fromLatestBlock} to ${toLatestBlock} (latest)...`);
-      for (let blockNumber = fromLatestBlock; blockNumber <= toLatestBlock; blockNumber += 1) {
+    const latestBlock = Math.max(fromLatestBlock, toFinalizedBlock + 1);
+    if (latestBlock <= toLatestBlock) {
+      console.log(`Syncing blocks from ${latestBlock} to ${toLatestBlock} (latest)...`);
+      for (let blockNumber = latestBlock; blockNumber <= toLatestBlock; blockNumber += 1) {
         queue
           .add(async () => {
             console.log(`Processing block ${blockNumber}...`);
@@ -152,10 +154,9 @@ export class Sync {
             console.error(err);
           });
       }
-      console.log(`Synced blocks from ${fromLatestBlock} to ${toLatestBlock} (latest)`);
+      await queue.onIdle();
+      console.log(`Synced blocks from ${latestBlock} to ${toLatestBlock} (latest)`);
     }
-
-    await queue.onIdle();
 
     if (!successful) {
       throw new Error('Backfill failed');
