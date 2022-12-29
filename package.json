@@ -11,7 +11,7 @@
     "format": "prettier --write \"src/**/*.ts\"",
     "lint": "eslint \"./src/**/*.ts\" --fix",
     "prepare": "npx husky install",
-    "start": "npx cross-env NODE_PATH=./dist INFINITY_NODE_ENV=prod node -r dotenv/config ./dist/index.js",
+    "start": "npx cross-env NODE_PATH=./dist node -r dotenv/config ./dist/index.js",
     "start:prod": "cross-env HOST=localhost INFINITY_NODE_ENV=prod npm run build && node -r dotenv/config ./dist/index.js",
     "start:dev": "cross-env HOST=localhost cross-env NODE_PATH=./src ts-node -r dotenv/config ./src/index.ts",
     "update:lib": "npm install @infinityxyz/lib@latest",
