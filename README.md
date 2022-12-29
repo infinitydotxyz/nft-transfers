@@ -1,9 +1,5 @@
 ## nft-transfers
 
-#### Local development
-* Setup Hookdeck
-    * Install the [cli](https://hookdeck.com/docs/using-the-cli#installation)
-    * Login `hookdeck login`
-
-* Start listening for and handling events
-    * `npm run start:dev`
+### Deploying 
+* To deploy to prod, set `INFINITY_NODE_ENV` to `prod` in your .env file. Run `npm run deploy:prod`
+* To deploy to dev, set `INFINITY_NODE_ENV` to `dev` in your .env file. Run `npm run deploy:dev`
