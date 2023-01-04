@@ -42,14 +42,14 @@
   },
   "dependencies": {
     "@alch/alchemy-web3": "^1.4.4",
-    "@infinityxyz/lib": "^1.241.1",
+    "@infinityxyz/lib": "^1.280.0",
     "axios": "^1.1.2",
     "chalk": "^4.1.2",
     "dotenv": "^16.0.0",
     "emittery": "^0.10.2",
     "ethers": "^5.6.4",
     "express": "^4.17.3",
-    "firebase-admin": "^10.0.2",
+    "firebase-admin": "^11.4.1",
     "graphql-request": "^4.3.0"
   }
 }
