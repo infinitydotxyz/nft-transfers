@@ -1,14 +1,8 @@
 import { trimLowerCase } from '@infinityxyz/lib/utils';
 import { createHash } from 'crypto';
-import { StaticJsonRpcProvider } from '@ethersproject/providers';
 
 export const COLLECTION_INDEXING_SERVICE_URL =
   'https://nft-collection-service-dot-nftc-infinity.ue.r.appspot.com/collection';
-
-export const JSON_RPC_MAINNET_KEYS = (() => {
-  const apiKeys = getMultipleEnvVariables('JSON_RPC_MAINNET');
-  return apiKeys;
-})();
 
 export function randomInt(min: number, max: number): number {
   min = Math.ceil(min);
@@ -21,30 +15,7 @@ export function randomItem<T>(array: T[]): T {
   return array[index];
 }
 
-function getMultipleEnvVariables(prefix: string, minLength = 1): string[] {
-  const variables = [];
-  let i = 0;
-
-  for (;;) {
-    try {
-      const apiKey = getEnvironmentVariable(`${prefix}${i}`);
-      variables.push(apiKey);
-      i += 1;
-    } catch (err) {
-      break;
-    }
-  }
-
-  if (variables.length < minLength) {
-    throw new Error(
-      `Env Variable: ${prefix} failed to get min number of keys. Found: ${variables.length} Expected: at least ${minLength}`
-    );
-  }
-
-  return variables;
-}
-
-function getEnvironmentVariable(name: string, required = true): string {
+export function getEnvironmentVariable(name: string, required = true): string {
   const variable = process.env[name] ?? '';
   if (required && !variable) {
     throw new Error(`Missing environment variable ${name}`);
@@ -71,20 +42,4 @@ export function getDocIdHash({
 }) {
   const data = chainId.trim() + '::' + trimLowerCase(collectionAddress) + '::' + tokenId.trim();
   return createHash('sha256').update(data).digest('hex').trim().toLowerCase();
-}
-
-const mainnetProviders = JSON_RPC_MAINNET_KEYS.map((item) => {
-  return new StaticJsonRpcProvider(item);
-});
-
-export function getProviderByChainId(chainId: string): StaticJsonRpcProvider {
-  let chainIdProviders;
-  if (chainId === '1') {
-    chainIdProviders = mainnetProviders;
-  }
-  if (!chainIdProviders || chainIdProviders.length === 0) {
-    throw new Error(`Provider not available for chain id: ${chainId}`);
-  }
-  const provider = randomItem(chainIdProviders);
-  return provider;
 }

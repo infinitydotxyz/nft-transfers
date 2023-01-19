@@ -1,13 +1,11 @@
 import { firestoreConstants } from '@infinityxyz/lib/utils/constants';
 import fbAdmin from 'firebase-admin';
+import { config } from '../config';
 
-import * as infinityServiceAccount from './creds/nftc-infinity-firebase.json';
-import * as pixelScoreServiceAccount from './creds/pixelscore-firebase.json';
-
-export const fsAdminPixelScore = (pixelScoreServiceAccount as any)?.project_id
+export const fsAdminPixelScore = (config.firestore.pixelScoreServiceAccount as any)?.project_id
   ? fbAdmin.initializeApp(
       {
-        credential: fbAdmin.credential.cert(pixelScoreServiceAccount as fbAdmin.ServiceAccount)
+        credential: fbAdmin.credential.cert(config.firestore.pixelScoreServiceAccount as fbAdmin.ServiceAccount)
       },
       'pixelscore'
     )
@@ -15,7 +13,7 @@ export const fsAdminPixelScore = (pixelScoreServiceAccount as any)?.project_id
 
 export const fsAdminInfinity = fbAdmin.initializeApp(
   {
-    credential: fbAdmin.credential.cert(infinityServiceAccount as fbAdmin.ServiceAccount)
+    credential: fbAdmin.credential.cert(config.firestore.infinityServiceAccount as fbAdmin.ServiceAccount)
   },
   'infinity'
 );
