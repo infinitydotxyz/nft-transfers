@@ -62,9 +62,6 @@ function updatePixelScoreDb(owner: string, chainId: string, collectionAddress: s
     pixelScoreDb
       .doc(`${PIXELSCORE_DB_RANKINGS_COLL}/${docId}`)
       .set({ owner }, { merge: true })
-      .then(() => {
-        console.log('=================== PixelScore DB updated for =======================', docId);
-      })
       .catch((err) => {
         console.log('Error updating ownership info in pixelscore db', err);
       });
