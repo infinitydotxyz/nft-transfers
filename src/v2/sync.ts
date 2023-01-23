@@ -9,6 +9,7 @@ import { TransferEventType, TransferLog } from 'types/transfer';
 import { streamQueryWithRef } from 'firestore/stream-query';
 import PQueue from 'p-queue';
 import { config } from 'config';
+import { FieldPath } from 'firebase-admin/firestore';
 
 export class Sync {
   protected websocketProvider: ethers.providers.WebSocketProvider;
@@ -192,9 +193,11 @@ export class Sync {
       .collectionGroup('nftTransferEvents')
       .where('metadata.chainId', '==', this._chainId)
       .where('data.blockNumber', '==', block.number)
-      .where('data.blockHash', '!=', block.hash) as FirebaseFirestore.Query<NftTransferEvent>;
+      .where('data.blockHash', '!=', block.hash)
+      .orderBy('data.blockHash', 'asc')
+      .orderBy(FieldPath.documentId(), 'asc') as FirebaseFirestore.Query<NftTransferEvent>;
 
-    const stream = streamQueryWithRef(eventsToRemove);
+    const stream = streamQueryWithRef(eventsToRemove, (item, ref) => [item.data.blockHash, ref]);
     for await (const { data, ref } of stream) {
       const update: NftTransferEvent = {
         metadata: {
