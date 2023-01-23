@@ -55,18 +55,6 @@ interface StreamQueryWithRefOptions<
   transformItem?: (pageItem?: TransformedPage) => Promise<TransformedItem> | TransformedItem;
 }
 
-interface StreamQueryWithRefOptions<
-  DocumentData,
-  TransformedPage = { data: DocumentData; ref: FirebaseFirestore.DocumentReference<DocumentData> },
-  TransformedItem = TransformedPage
-> {
-  pageSize: number;
-  transformPage?: (
-    docs: { data: DocumentData; ref: FirebaseFirestore.DocumentReference<DocumentData> }[]
-  ) => Promise<TransformedPage[]> | TransformedPage[];
-  transformItem?: (pageItem?: TransformedPage) => Promise<TransformedItem> | TransformedItem;
-}
-
 export async function* streamQueryWithRef<
   DocumentData,
   TransformedPage = { data: DocumentData; ref: FirebaseFirestore.DocumentReference<DocumentData> },
@@ -102,9 +90,13 @@ export async function* streamQueryWithRef<
     }
 
     hasNextPage = pageSnapshot.docs.length >= options.pageSize;
-    startAfter = getStartAfterField(
-      pageData?.[pageData.length - 1]?.data,
-      pageSnapshot.docs?.[pageSnapshot.docs.length - 1]?.ref
-    );
+
+    const lastItem = pageData?.[pageData.length - 1]?.data;
+    const lastRef = pageSnapshot.docs?.[pageSnapshot.docs.length - 1]?.ref;
+
+    hasNextPage = pageSnapshot.docs.length >= options.pageSize && !!lastItem && !!lastRef;
+    if (hasNextPage) {
+      startAfter = getStartAfterField(lastItem, lastRef);
+    }
   }
 }
