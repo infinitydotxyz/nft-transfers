@@ -197,7 +197,7 @@ export class Sync {
       .orderBy('data.blockHash', 'asc')
       .orderBy(FieldPath.documentId(), 'asc') as FirebaseFirestore.Query<NftTransferEvent>;
 
-    const stream = streamQueryWithRef(eventsToRemove, (item, ref) => [item.data.blockHash, ref]);
+    const stream = streamQueryWithRef(eventsToRemove, (item, ref) => [item?.data?.blockHash, ref]);
     for await (const { data, ref } of stream) {
       const update: NftTransferEvent = {
         metadata: {
