@@ -13,7 +13,7 @@ import { FieldPath } from 'firebase-admin/firestore';
 
 export class Sync {
   protected websocketProvider: ethers.providers.WebSocketProvider;
-  protected provider: ethers.providers.BaseProvider;
+  protected provider: ethers.providers.StaticJsonRpcProvider;
 
   public readonly TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
 
@@ -26,10 +26,8 @@ export class Sync {
   }
 
   constructor(protected _chainId: ChainId, protected _db: FirebaseFirestore.Firestore) {
-    const network = parseInt(_chainId, 10);
-
-    this.websocketProvider = new ethers.providers.AlchemyWebSocketProvider(network, config.eth.alchemyApiKey);
-    this.provider = new ethers.providers.AlchemyProvider(network, config.eth.alchemyApiKey);
+    this.websocketProvider = config.eth.websocketProvider;
+    this.provider = config.eth.rpcProvider;
   }
 
   async sync() {
