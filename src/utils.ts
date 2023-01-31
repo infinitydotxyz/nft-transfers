@@ -1,9 +1,6 @@
 import { trimLowerCase } from '@infinityxyz/lib/utils';
 import { createHash } from 'crypto';
 
-export const COLLECTION_INDEXING_SERVICE_URL =
-  'https://nft-collection-service-dot-nftc-infinity.ue.r.appspot.com/collection';
-
 export function randomInt(min: number, max: number): number {
   min = Math.ceil(min);
   max = Math.floor(max);

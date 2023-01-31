@@ -1,4 +1,4 @@
-import { firestoreConstants } from '@infinityxyz/lib/utils';
+import { firestoreConstants, getCollectionDocId } from '@infinityxyz/lib/utils';
 import { infinityDb, pixelScoreDb } from 'firestore';
 import { Transfer } from 'types/transfer';
 import { NftEventKind, NftTransferEvent } from './types';
@@ -12,7 +12,6 @@ export async function transferHandlerV2(
   commitment: 'latest' | 'safe' | 'finalized',
   batchHandler: FirestoreBatchHandler
 ): Promise<void> {
-  updatePixelScoreDb(transfer.to, transfer.chainId, transfer.address, transfer.tokenId);
   try {
     const id = `${transfer.blockNumber}:${transfer.blockHash}:${transfer.logIndex}`;
 
@@ -42,9 +41,12 @@ export async function transferHandlerV2(
       }
     };
 
+    updatePixelScoreDb(transfer.to, transfer.chainId, transfer.address, transfer.tokenId);
+    const collId = getCollectionDocId({ collectionAddress: transfer.address, chainId: transfer.chainId });
+
     const tokenRef = infinityDb
       .collection(firestoreConstants.COLLECTIONS_COLL)
-      .doc(`${transfer.chainId}:${transfer.address}`)
+      .doc(collId)
       .collection(firestoreConstants.COLLECTION_NFTS_COLL)
       .doc(transfer.tokenId);
     const transferRef = tokenRef.collection('nftTransferEvents').doc(id);
