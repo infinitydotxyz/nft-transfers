@@ -10,12 +10,15 @@ import { streamQueryWithRef } from 'firestore/stream-query';
 import PQueue from 'p-queue';
 import { config } from 'config';
 import { FieldPath } from 'firebase-admin/firestore';
+import { firestoreConstants, getCollectionDocId } from '@infinityxyz/lib/utils';
 
 export class Sync {
   protected websocketProvider: ethers.providers.WebSocketProvider;
   protected provider: ethers.providers.StaticJsonRpcProvider;
 
   public readonly TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+
+  private _supportedCollSet = new Set<string>();
 
   protected get syncRef(): FirebaseFirestore.DocumentReference<NftTransferEventsSync> {
     return this._db
@@ -35,6 +38,14 @@ export class Sync {
       this.provider.getBlockNumber(),
       this.provider.getBlock('finalized')
     ]);
+
+    const supportedColls = await this._db
+      .collection(firestoreConstants.SUPPORTED_COLLECTIONS_COLL)
+      .where('isSupported', '==', true)
+      .select('isSupported')
+      .limit(1000) // future todo: change limit if number of selected colls grow
+      .get();
+    this._supportedCollSet = new Set(supportedColls.docs.map((doc) => doc.id));
 
     console.log(`Backfilling from block ${currentFinalizedBlock.number} to ${currentBlockNumber}...`);
     const sync = await this._getSync(currentBlockNumber, currentFinalizedBlock);
@@ -174,7 +185,10 @@ export class Sync {
       const isERC721Transfer = transferLog.topics.length === 4 && transferLog.topics[3];
       if (isERC721Transfer) {
         const transfer = erc721TransferLogAdapter(transferLog as unknown as TransferLog, TransferEventType.Transfer);
-        await transferHandlerV2(transfer, block, commitment, batchHandler);
+        const collId = getCollectionDocId({ collectionAddress: transfer.address, chainId: transfer.chainId });
+        if (this._supportedCollSet.has(collId)) {
+          await transferHandlerV2(transfer, block, commitment, batchHandler);
+        }
       }
     }
 
