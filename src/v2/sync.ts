@@ -1,16 +1,16 @@
 import { ChainId } from '@infinityxyz/lib/types/core';
-import { firestoreConstants } from '@infinityxyz/lib/utils';
-import { config } from 'config';
 import { ethers } from 'ethers';
-import { FieldPath } from 'firebase-admin/firestore';
+import { NftTransferEvent, NftTransferEventsSync } from './types';
 import { infinityDb } from 'firestore';
 import FirestoreBatchHandler from 'firestore/batch-handler';
+import { erc721TransferLogAdapter } from 'transfer-adapter';
+import { transferHandlerV2 } from './handler';
+import { TransferEventType, TransferLog } from 'types/transfer';
 import { streamQueryWithRef } from 'firestore/stream-query';
 import PQueue from 'p-queue';
-import { erc721TransferLogAdapter } from 'transfer-adapter';
-import { TransferEventType, TransferLog } from 'types/transfer';
-import { transferHandlerV2 } from './handler';
-import { NftTransferEvent, NftTransferEventsSync } from './types';
+import { config } from 'config';
+import { FieldPath } from 'firebase-admin/firestore';
+import { firestoreConstants, getCollectionDocId } from '@infinityxyz/lib/utils';
 
 export class Sync {
   protected websocketProvider: ethers.providers.WebSocketProvider;
@@ -185,10 +185,10 @@ export class Sync {
       const isERC721Transfer = transferLog.topics.length === 4 && transferLog.topics[3];
       if (isERC721Transfer) {
         const transfer = erc721TransferLogAdapter(transferLog as unknown as TransferLog, TransferEventType.Transfer);
-        // const collId = getCollectionDocId({ collectionAddress: transfer.address, chainId: transfer.chainId });
-        // if (this._supportedCollSet.has(collId)) {
-        await transferHandlerV2(transfer, block, commitment, batchHandler);
-        // }
+        const collId = getCollectionDocId({ collectionAddress: transfer.address, chainId: transfer.chainId });
+        if (this._supportedCollSet.has(collId)) {
+          await transferHandlerV2(transfer, block, commitment, batchHandler);
+        }
       }
     }
 
